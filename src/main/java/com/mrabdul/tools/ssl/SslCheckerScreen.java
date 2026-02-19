@@ -103,8 +103,9 @@ public class SslCheckerScreen implements ToolScreen {
         root.addComponent(runBtn);
 
 
-        root.addComponent(new Label("JKS path:"));
+        root.addComponent(new Label("JKS path (Ctrl+Space or F2 to autocomplete):"));
         root.addComponent(jksPath);
+
 
         Panel pwRow = new Panel(new LinearLayout(Direction.HORIZONTAL));
         pwRow.addComponent(new Label("JKS password: "));

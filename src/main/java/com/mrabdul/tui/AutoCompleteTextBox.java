@@ -17,10 +17,32 @@ public class AutoCompleteTextBox extends TextBox {
 
     @Override
     public synchronized Result handleKeyStroke(KeyStroke keyStroke) {
-        if (keyStroke != null && keyStroke.getKeyType() == KeyType.Tab) {
-            FilePathAutoCompleter.autocomplete(this);
-            return Result.HANDLED;
+        if (keyStroke != null) {
+
+            // Ctrl+Space (most reliable)
+            if (keyStroke.getKeyType() == KeyType.Character
+                    && keyStroke.isCtrlDown()
+                    && keyStroke.getCharacter() != null
+                    && keyStroke.getCharacter().charValue() == ' ') {
+                FilePathAutoCompleter.autocomplete(this);
+                return Result.HANDLED;
+            }
+
+            // F2 as an alternative (also reliable in most terminals)
+            if (keyStroke.getKeyType() == KeyType.F2) {
+                FilePathAutoCompleter.autocomplete(this);
+                return Result.HANDLED;
+            }
+
+            // Best-effort: if TAB comes as a character
+            if (keyStroke.getKeyType() == KeyType.Character
+                    && keyStroke.getCharacter() != null
+                    && keyStroke.getCharacter().charValue() == '\t') {
+                FilePathAutoCompleter.autocomplete(this);
+                return Result.HANDLED;
+            }
         }
+
         return super.handleKeyStroke(keyStroke);
     }
 }
