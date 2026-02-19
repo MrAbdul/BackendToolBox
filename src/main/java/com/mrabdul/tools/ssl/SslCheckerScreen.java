@@ -22,7 +22,7 @@ public class SslCheckerScreen implements ToolScreen {
     public Panel render(final StatusBar statusBar, final TaskRunner taskRunner) {
         final Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
 
-        final TextBox jksPath = new TextBox(new TerminalSize(80, 1));
+        final com.mrabdul.tui.AutoCompleteTextBox jksPath = new com.mrabdul.tui.AutoCompleteTextBox(80,1);
         final TextBox jksPassword = new TextBox(new TerminalSize(40, 1));
         jksPassword.setMask('*');
 
