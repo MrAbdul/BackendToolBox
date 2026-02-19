@@ -9,7 +9,6 @@ import java.util.List;
 public class FilePathAutoCompleter {
 
     public static void autocomplete(TextBox box) {
-        System.out.println("Autocomplete called");
         String text = box.getText();
         if (text == null) return;
 
@@ -52,6 +51,8 @@ public class FilePathAutoCompleter {
             String newText = f.getAbsolutePath() + (f.isDirectory() ? File.separator : "");
             box.setText(newText);
             box.setCaretPosition(newText.length());
+            // Force repaint
+            box.invalidate();
         }
         // If multiple matches: do nothing for now (we can enhance to show a popup list)
     }
