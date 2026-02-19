@@ -3,6 +3,7 @@ package com.mrabdul.tools.ssl;
 import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.gui2.*;
 import com.mrabdul.tools.ToolScreen;
+import com.mrabdul.tui.AutoCompleteTextBox;
 import com.mrabdul.tui.StatusBar;
 import com.mrabdul.tui.TaskRunner;
 import org.springframework.stereotype.Component;
@@ -22,7 +23,7 @@ public class SslCheckerScreen implements ToolScreen {
     public Panel render(final StatusBar statusBar, final TaskRunner taskRunner) {
         final Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
 
-        final com.mrabdul.tui.AutoCompleteTextBox jksPath = new com.mrabdul.tui.AutoCompleteTextBox(80,1);
+        final AutoCompleteTextBox jksPath = new AutoCompleteTextBox(80,1);
         final TextBox jksPassword = new TextBox(new TerminalSize(40, 1));
         jksPassword.setMask('*');
 

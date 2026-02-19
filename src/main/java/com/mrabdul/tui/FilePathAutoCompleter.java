@@ -9,6 +9,7 @@ import java.util.List;
 public class FilePathAutoCompleter {
 
     public static void autocomplete(TextBox box) {
+        System.out.println("Autocomplete called");
         String text = box.getText();
         if (text == null) return;
 

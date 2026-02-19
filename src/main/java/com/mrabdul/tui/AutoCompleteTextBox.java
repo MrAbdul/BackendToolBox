@@ -34,7 +34,7 @@ public class AutoCompleteTextBox extends TextBox {
                 return Result.HANDLED;
             }
 
-            // Best-effort: if TAB comes as a character
+            // Best-effort: if TAB comes as a characters
             if (keyStroke.getKeyType() == KeyType.Character
                     && keyStroke.getCharacter() != null
                     && keyStroke.getCharacter().charValue() == '\t') {
