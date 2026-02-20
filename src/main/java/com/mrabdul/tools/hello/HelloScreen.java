@@ -12,7 +12,7 @@ public class HelloScreen implements ToolScreen {
     public Panel render(StatusBar statusBar, TaskRunner taskRunner) {
         Panel panel = new Panel(new LinearLayout());
 
-        panel.addComponent(new Label("Hello Abdul 👋"));
+        panel.addComponent(new Label("Hello Abdul"));
         panel.addComponent(new EmptySpace());
         panel.addComponent(new Label("Your TUI toolbox is alive."));
 
