@@ -20,6 +20,8 @@ public class DbAnalyzerScreen implements ToolScreen {
     @Override
     public Panel render(StatusBar statusBar, TaskRunner taskRunner) {
         Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
+        root.addComponent(new Label("DB analyzer that will compare two codebases and generate a JSON report of differences"));
+
 
         AutoCompleteTextBox baseRoot = new AutoCompleteTextBox(90, 1);
         AutoCompleteTextBox targetRoot = new AutoCompleteTextBox(90, 1);
@@ -87,26 +89,27 @@ public class DbAnalyzerScreen implements ToolScreen {
         });
 
         Button run = runHolder[0];
+        Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
 
-        root.addComponent(new Label("Base codebase root (master) (Ctrl+Space / F2):"));
-        root.addComponent(baseRoot);
+        form.addComponent(new Label("Base codebase root (master) (Ctrl+Space / F2):"));
+        form.addComponent(baseRoot);
 
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
-        root.addComponent(new Label("Target codebase root (migration branch) (Ctrl+Space / F2):"));
-        root.addComponent(targetRoot);
+        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        form.addComponent(new Label("Target codebase root (migration branch) (Ctrl+Space / F2):"));
+        form.addComponent(targetRoot);
 
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
-        root.addComponent(new Label("Optional package filter (comma-separated). Example: com.bbyn.dao,com.bbyn.repo"));
-        root.addComponent(includePackages);
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
-        root.addComponent(new Label("Optional JSON output path:"));
-        root.addComponent(jsonOutPath);
+        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        form.addComponent(new Label("Optional package filter (comma-separated). Example: com.bbyn.dao,com.bbyn.repo"));
+        form.addComponent(includePackages);
+        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        form.addComponent(new Label("Optional JSON output path:"));
+        form.addComponent(jsonOutPath);
 
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
-        root.addComponent(includeDynamic);
+        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        form.addComponent(includeDynamic);
 
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
-        root.addComponent(run);
+        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        form.addComponent(run);
 
         root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         root.addComponent(new Label("Output:"));

@@ -30,7 +30,7 @@ public class JdbcDetectorScreen implements ToolScreen {
         root.addComponent(new Label("JDBC Detector (Static Analysis)"));
 
         // ---- Inputs ----
-        Panel form = new Panel(new GridLayout(2));
+        Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
 
         // Source root (with Ctrl+Space / F2 autocomplete via AutoCompleteTextBox)
         form.addComponent(new Label("Source root path:"));

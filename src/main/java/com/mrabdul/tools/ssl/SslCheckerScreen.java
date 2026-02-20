@@ -22,6 +22,7 @@ public class SslCheckerScreen implements ToolScreen {
     @Override
     public Panel render(final StatusBar statusBar, final TaskRunner taskRunner) {
         final Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
+        root.addComponent(new Label("SSL checker that will validate SSL certificates and report any issues"));
 
         final AutoCompleteTextBox jksPath = new AutoCompleteTextBox(80,1);
         final TextBox jksPassword = new TextBox(new TerminalSize(40, 1));
@@ -101,26 +102,22 @@ public class SslCheckerScreen implements ToolScreen {
         });
 
         final Button runBtn = runBtnHolder[0];
-        root.addComponent(runBtn);
+
+        Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
+
+        form.addComponent(new Label("JKS path (Ctrl+Space or F2 to autocomplete):"));
+        form.addComponent(jksPath);
 
 
-        root.addComponent(new Label("JKS path (Ctrl+Space or F2 to autocomplete):"));
-        root.addComponent(jksPath);
+        form.addComponent(new Label("JKS password: "));
+        form.addComponent(jksPassword);
 
+        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        form.addComponent(new Label("URL (https://host:port or host:port):"));
+        form.addComponent(url);
 
-        Panel pwRow = new Panel(new LinearLayout(Direction.HORIZONTAL));
-        pwRow.addComponent(new Label("JKS password: "));
-        pwRow.addComponent(jksPassword);
-        root.addComponent(pwRow);
-
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
-        root.addComponent(new Label("URL (https://host:port or host:port):"));
-        root.addComponent(url);
-
-        Panel proxyRow = new Panel(new LinearLayout(Direction.HORIZONTAL));
-        proxyRow.addComponent(new Label("Proxy (optional host:port): "));
-        proxyRow.addComponent(proxy);
-        root.addComponent(proxyRow);
+        form.addComponent(new Label("Proxy (optional host:port): "));
+        form.addComponent(proxy);
 
         root.addComponent(useAsTrustStore);
         root.addComponent(hostnameVerification);
