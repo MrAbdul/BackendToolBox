@@ -21,7 +21,7 @@ public class MainWindow {
 
     public void start() {
         final MultiWindowTextGUI gui = new MultiWindowTextGUI(screen);
-        gui.setTheme(UiTheme.theme());
+        gui.setTheme(new OpsTheme());
         final BasicWindow window = new BasicWindow("Ops Toolbox (TUI) - Java 8");
 
         final Label statusLabel = new Label("");
