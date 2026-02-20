@@ -13,7 +13,7 @@ A static analysis tool that scans Java source code for potential JDBC resource l
 - **Flexible Reporting**: Produces detailed text-based reports on-screen or outputs structured JSON findings to a file.
 - **CLI & TUI Integration**: Available in both interactive TUI (with file path auto-completion) and CLI modes.
 
-### 2. 🛡 SSL/TLS Connectivity Checker
+### 2.  SSL/TLS Connectivity Checker
 A diagnostic tool for verifying SSL/TLS certificate chains and server connectivity.
 - **Certificate Validation**: Connects to remote hosts (e.g., `example.com:443`) and retrieves full certificate chains.
 - **Detailed Insights**: Displays certificate subject, issuer, SHA-256 fingerprint, and expiration details.
