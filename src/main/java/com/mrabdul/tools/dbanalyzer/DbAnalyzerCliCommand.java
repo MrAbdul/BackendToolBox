@@ -39,6 +39,9 @@ public class DbAnalyzerCliCommand implements CliCommand {
         String includePackages = CliArgs.get(a, "includePackages", "");
         boolean includeDynamic = CliArgs.getBool(a, "includeDynamic", false);
 
+        // NEW:
+        String jsonOut = CliArgs.get(a, "jsonOut", "");
+
         if (baseRoot == null || baseRoot.trim().isEmpty() || targetRoot == null || targetRoot.trim().isEmpty()) {
             System.err.println("ERROR: Missing required arguments.");
             System.err.println();
@@ -50,11 +53,17 @@ public class DbAnalyzerCliCommand implements CliCommand {
                 baseRoot.trim(),
                 targetRoot.trim(),
                 includePackages == null ? "" : includePackages.trim(),
-                includeDynamic
+                includeDynamic,
+                jsonOut == null ? "" : jsonOut.trim()
         );
 
         DbAnalyzerResult res = service.analyze(req);
         System.out.println(res.toReport());
+
+        // Optional: tell user if JSON was written
+        if (req.getJsonOut() != null && !req.getJsonOut().trim().isEmpty()) {
+            System.out.println("JSON report written to: " + req.getJsonOut().trim());
+        }
 
         // Exit codes:
         // 0 = no schema-relevant SQL changes
@@ -90,6 +99,7 @@ public class DbAnalyzerCliCommand implements CliCommand {
         System.out.println("  --includePackages <csv>           Comma-separated package prefixes filter");
         System.out.println("                                   Example: com.bbyn.dao,com.bbyn.repo");
         System.out.println("  --includeDynamic <true|false>     Include dynamic SQL fragments. Default: false");
+        System.out.println("  --jsonOut <path>                  Write JSON report to this path (directories auto-created)");
         System.out.println("  --help, -h                        Show this help");
         System.out.println();
         System.out.println("Exit codes:");

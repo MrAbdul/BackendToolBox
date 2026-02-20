@@ -8,12 +8,22 @@ public class DbAnalyzerRequest {
     private final String targetRoot;
     private final List<String> includePackages;
     private final boolean includeDynamic;
+    private final String jsonOut; // NEW
 
-    public DbAnalyzerRequest(String baseRoot, String targetRoot, String includePackagesCsv, boolean includeDynamic) {
+    public DbAnalyzerRequest(String baseRoot,
+                             String targetRoot,
+                             String includePackagesCsv,
+                             boolean includeDynamic,
+                             String jsonOut) {
         this.baseRoot = baseRoot;
         this.targetRoot = targetRoot;
         this.includePackages = parseCsv(includePackagesCsv);
         this.includeDynamic = includeDynamic;
+        this.jsonOut = jsonOut == null ? "" : jsonOut.trim();
+    }
+
+    public DbAnalyzerRequest(String baseRoot, String targetRoot, String includePackagesCsv, boolean includeDynamic) {
+        this(baseRoot, targetRoot, includePackagesCsv, includeDynamic, "");
     }
 
     private static List<String> parseCsv(String csv) {
@@ -28,4 +38,5 @@ public class DbAnalyzerRequest {
     public String getTargetRoot() { return targetRoot; }
     public List<String> getIncludePackages() { return includePackages; }
     public boolean isIncludeDynamic() { return includeDynamic; }
+    public String getJsonOut() { return jsonOut; } // NEW
 }

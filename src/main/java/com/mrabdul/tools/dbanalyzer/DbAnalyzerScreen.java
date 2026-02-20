@@ -27,6 +27,9 @@ public class DbAnalyzerScreen implements ToolScreen {
         TextBox includePackages = new TextBox(new TerminalSize(90, 1));
         includePackages.setText(""); // optional: com.bbyn.dao,com.bbyn.repo
 
+        AutoCompleteTextBox jsonOutPath = new AutoCompleteTextBox(90, 1);
+        jsonOutPath.setText(""); // optional
+
         CheckBox includeDynamic = new CheckBox("Include dynamic SQL fragments (partial statements)");
         includeDynamic.setChecked(false);
 
@@ -55,7 +58,8 @@ public class DbAnalyzerScreen implements ToolScreen {
                         b,
                         t,
                         includePackages.getText() == null ? "" : includePackages.getText().trim(),
-                        includeDynamic.isChecked()
+                        includeDynamic.isChecked(),
+                        jsonOutPath.getText() == null ? "" : jsonOutPath.getText().trim()
                 );
 
                 output.setText("");
@@ -94,6 +98,9 @@ public class DbAnalyzerScreen implements ToolScreen {
         root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         root.addComponent(new Label("Optional package filter (comma-separated). Example: com.bbyn.dao,com.bbyn.repo"));
         root.addComponent(includePackages);
+        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        root.addComponent(new Label("Optional JSON output path:"));
+        root.addComponent(jsonOutPath);
 
         root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         root.addComponent(includeDynamic);

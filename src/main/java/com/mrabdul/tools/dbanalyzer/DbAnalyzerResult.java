@@ -92,6 +92,80 @@ public class DbAnalyzerResult {
 
         return sb.toString();
     }
+    public DbAnalyzerJsonReport toJsonReport(DbAnalyzerRequest req) {
+        DbAnalyzerJsonReport r = new DbAnalyzerJsonReport();
+        r.baseRoot = req.getBaseRoot();
+        r.targetRoot = req.getTargetRoot();
+        r.includeDynamic = req.isIncludeDynamic();
+        r.includePackages = new ArrayList<String>(req.getIncludePackages());
+
+        r.baseSqlCount = this.baseSqlCount;
+        r.targetSqlCount = this.targetSqlCount;
+
+        int modified = 0, added = 0, removed = 0;
+
+        for (Change c : this.changes) {
+            DbAnalyzerJsonReport.Change jc = new DbAnalyzerJsonReport.Change();
+            jc.kind = c.getKind().name();
+            jc.key = c.getKey();
+
+            if (c.getBase() != null) jc.base = toArtifact(c.getBase());
+            if (c.getTarget() != null) jc.target = toArtifact(c.getTarget());
+
+            // newColumnsByTable: Set -> sorted List
+            if (c.getNewColumnsByTable() != null && !c.getNewColumnsByTable().isEmpty()) {
+                for (Map.Entry<String, Set<String>> e : c.getNewColumnsByTable().entrySet()) {
+                    List<String> cols = new ArrayList<String>(e.getValue());
+                    Collections.sort(cols);
+                    jc.newColumnsByTable.put(e.getKey(), cols);
+                }
+            }
+
+            r.changes.add(jc);
+
+            switch (c.getKind()) {
+                case MODIFIED: modified++; break;
+                case ADDED: added++; break;
+                case REMOVED: removed++; break;
+            }
+        }
+
+        r.modifiedCount = modified;
+        r.addedCount = added;
+        r.removedCount = removed;
+
+        return r;
+    }
+
+    private static DbAnalyzerJsonReport.Artifact toArtifact(SqlArtifact a) {
+        DbAnalyzerJsonReport.Artifact ja = new DbAnalyzerJsonReport.Artifact();
+        ja.idKey = a.getKey();
+        ja.file = a.getRelativeFile();
+        ja.className = a.getClassName();
+        ja.owner = a.getMethodOrField();
+        ja.line = a.getLine();
+        ja.dynamic = a.isDynamic();
+
+        ja.normalizedSql = a.getNormalizedSql();
+
+        SqlMeta m = a.getMeta();
+        ja.type = (m == null ? SqlMeta.Type.UNKNOWN : m.getType()).name();
+        ja.parsedFully = (m != null && m.isParsedFully());
+
+        if (m != null) {
+            ja.tables = new ArrayList<String>(m.getTables());
+
+            Map<String, Set<String>> cb = m.getColumnsByTable();
+            if (cb != null) {
+                for (Map.Entry<String, Set<String>> e : cb.entrySet()) {
+                    List<String> cols = new ArrayList<String>(e.getValue());
+                    Collections.sort(cols);
+                    ja.columnsByTable.put(e.getKey(), cols);
+                }
+            }
+        }
+        return ja;
+    }
 
     private static String shorten(String s) {
         if (s == null) return "";
