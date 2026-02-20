@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "scan": {
+    "excludePathContains": ["/target/", "/build/", "/out/", "/.git/"]
+  },
+  "detectors": [
+    {
+      "id": "put-redis-4args",
+      "methodRegex": "put|set",
+      "argCount": 4,
+      "scopeNameRegex": ".*(cache|cacheManager|redis|redisCache).*",
+      "operation": "PUT",
+      "cacheLayer": "REDIS",
+      "keyArgIndex": 0,
+      "ttlArgIndex": 2,
+      "ttlUnitDefault": "SECONDS"
+    },
+    {
+      "id": "put-local-3args",
+      "methodRegex": "put|set",
+      "argCount": 3,
+      "scopeNameRegex": ".*(cache|cacheManager|local|localCache).*",
+      "operation": "PUT",
+      "cacheLayer": "LOCAL",
+      "keyArgIndex": 0,
+      "ttlArgIndex": 2,
+      "ttlUnitDefault": "SECONDS"
+    },
+    {
+      "id": "put-no-ttl",
+      "methodRegex": "put|set",
+      "argCount": 2,
+      "scopeNameRegex": ".*(cache|cacheManager|redis|local).*",
+      "operation": "PUT",
+      "cacheLayer": "UNKNOWN",
+      "keyArgIndex": 0
+    },
+    {
+      "id": "delete",
+      "methodRegex": "delete|evict|remove",
+      "minArgs": 1,
+      "scopeNameRegex": ".*(cache|cacheManager|redis|local).*",
+      "operation": "DELETE",
+      "cacheLayer": "ANY",
+      "keyArgIndex": 0
+    },
+    {
+      "id": "clear",
+      "methodRegex": "clear|clearAll|evictAll|invalidateAll",
+      "scopeNameRegex": ".*(cache|cacheManager|redis|local).*",
+      "operation": "CLEAR",
+      "cacheLayer": "ANY",
+      "keyArgIndex": 0
+    }
+  ],
+  "keyNormalization": {
+    "useFirstConcatTermAsNamespace": true,
+    "constantNameRegex": ".*(_KEY|_PREFIX|_CACHE|_NAMESPACE)$",
+    "literalPrefixRegex": ".*"
+  },
+  "ttlResolution": {
+    "constantsToSeconds": {},
+    "parseJavaDurationCalls": true
+  },
+  "rules": {
+    "veryLongTtlSeconds": 604800,
+    "veryShortTtlSeconds": 30,
+    "flagNoTtlWithoutDelete": true,
+    "flagVeryLongTtl": true,
+    "flagVeryShortTtl": false,
+    "flagDynamicTtl": true
+  }
+}
