@@ -25,8 +25,7 @@ public class CacheTtlInspectorScreen implements ToolScreen {
 
         root.addComponent(new Label("Cache TTL Inspector (config-driven)"));
 
-        Panel form = new Panel(new GridLayout(2));
-        form.setLayoutManager(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
+        Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(10).setVerticalSpacing(10));
         form.addComponent(new Label("Source root path:"));
         final AutoCompleteTextBox sourceRoot = new AutoCompleteTextBox(90, 1);
         sourceRoot.setText(new File(".").getAbsoluteFile().getParent());
