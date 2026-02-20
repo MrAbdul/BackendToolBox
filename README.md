@@ -4,7 +4,7 @@
 
 ---
 
-## 🛠 Key Features
+##  Key Features
 
 ### 1.  JDBC Resource Leak Detector
 A static analysis tool that scans Java source code for potential JDBC resource leaks (e.g., unclosed `Connection`, `Statement`, or `ResultSet`).
@@ -32,7 +32,7 @@ A lightweight demonstration module used to showcase the extensibility of the TUI
 
 ---
 
-## 🏗 Architecture & Core Components
+##  Architecture & Core Components
 
 BackendToolBox is built on **Java 8** and **Spring Boot 2.7.x**, leveraging a modular architecture that makes it easy to add new tools.
 
