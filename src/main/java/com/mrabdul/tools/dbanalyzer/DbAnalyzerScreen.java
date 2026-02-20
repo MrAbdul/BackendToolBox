@@ -98,30 +98,19 @@ public class DbAnalyzerScreen implements ToolScreen {
 
         Button run = runHolder[0];
         Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
-
-        form.addComponent(new Label("Base codebase root (master) (Ctrl+Space / F2):"));
         form.addComponent(baseRoot);
-
-        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         form.addComponent(new Label("Target codebase root (migration branch) (Ctrl+Space / F2):"));
         form.addComponent(targetRoot);
-
-        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         form.addComponent(new Label("Optional package filter (comma-separated). Example: com.bbyn.dao,com.bbyn.repo"));
         form.addComponent(includePackages);
-        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         form.addComponent(new Label("Optional JSON output path:"));
         form.addComponent(jsonOutPath);
-
-        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         form.addComponent(includeDynamic);
         root.addComponent(form.withBorder(Borders.singleLine("Options")));
-
         Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
         actions.addComponent(run);
-        actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
         actions.addComponent(clearBtn);
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        root.addComponent(actions);
         output.setReadOnly(true);
         root.addComponent(output.withBorder(Borders.singleLine("Report")));
 
