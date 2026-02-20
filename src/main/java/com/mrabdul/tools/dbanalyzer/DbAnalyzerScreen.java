@@ -87,6 +87,14 @@ public class DbAnalyzerScreen implements ToolScreen {
                 });
             }
         });
+        Button clearBtn = new Button("Clear output", new Runnable() {
+            @Override
+            public void run() {
+                if (output != null) output.setText("");
+                statusBar.setInfo("Output cleared.");
+            }
+        });
+
 
         Button run = runHolder[0];
         Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
@@ -107,13 +115,15 @@ public class DbAnalyzerScreen implements ToolScreen {
 
         form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         form.addComponent(includeDynamic);
+        root.addComponent(form.withBorder(Borders.singleLine("Options")));
 
-        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
-        form.addComponent(run);
-
+        Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
+        actions.addComponent(run);
+        actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
+        actions.addComponent(clearBtn);
         root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
-        root.addComponent(new Label("Output:"));
-        root.addComponent(output.withBorder(Borders.singleLine()));
+        output.setReadOnly(true);
+        root.addComponent(output.withBorder(Borders.singleLine("Report")));
 
         return root;
     }

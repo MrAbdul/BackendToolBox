@@ -103,15 +103,21 @@ public class CacheTtlInspectorScreen implements ToolScreen {
                 });
             }
         });
+        Button clearBtn = new Button("Clear output", new Runnable() {
+            @Override
+            public void run() {
+                if (output != null) output.setText("");
+                statusBar.setInfo("Output cleared.");
+            }
+        });
 
+        Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
+        actions.addComponent(runHolder[0]);
+        actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
+        actions.addComponent(clearBtn);
         root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
-        root.addComponent(runHolder[0]);
-
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
-        root.addComponent(new Label("Output:"));
+        output.setReadOnly(true);
         root.addComponent(output.withBorder(Borders.singleLine("Report")));
-
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         root.addComponent(new Label("Tip: In path fields press Ctrl+Space or F2 for autocomplete."));
 
         return root;
