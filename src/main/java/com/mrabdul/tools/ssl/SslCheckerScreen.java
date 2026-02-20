@@ -114,26 +114,25 @@ public class SslCheckerScreen implements ToolScreen {
         form.addComponent(new Label("JKS path (Ctrl+Space or F2 to autocomplete):"));
         form.addComponent(jksPath);
 
-
         form.addComponent(new Label("JKS password: "));
         form.addComponent(jksPassword);
 
-        form.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         form.addComponent(new Label("URL (https://host:port or host:port):"));
         form.addComponent(url);
 
         form.addComponent(new Label("Proxy (optional host:port): "));
         form.addComponent(proxy);
-        root.addComponent(form.withBorder(Borders.singleLine("Options")));
 
-        root.addComponent(useAsTrustStore);
-        root.addComponent(hostnameVerification);
+        form.addComponent(useAsTrustStore);
+        form.addComponent(hostnameVerification);
+
+        root.addComponent(form.withBorder(Borders.singleLine("Options")));
 
         Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
         actions.addComponent(runBtn);
         actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
         actions.addComponent(clearBtn);
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        root.addComponent(actions);
         output.setReadOnly(true);
         root.addComponent(output.withBorder(Borders.singleLine("Report")));
 

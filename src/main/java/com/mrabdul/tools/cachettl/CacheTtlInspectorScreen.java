@@ -31,7 +31,7 @@ public class CacheTtlInspectorScreen implements ToolScreen {
         sourceRoot.setText(new File(".").getAbsoluteFile().getParent());
         form.addComponent(sourceRoot);
 
-        form.addComponent(new Label("“Config path (JSON) (optional; blank = built-in default):"));
+        form.addComponent(new Label("Config path (JSON) (blank = built-in default)"));
         final AutoCompleteTextBox configPath = new AutoCompleteTextBox(90, 1);
         configPath.setText("");
         form.addComponent(configPath);
@@ -115,7 +115,7 @@ public class CacheTtlInspectorScreen implements ToolScreen {
         actions.addComponent(runHolder[0]);
         actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
         actions.addComponent(clearBtn);
-        root.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        root.addComponent(actions);
         output.setReadOnly(true);
         root.addComponent(output.withBorder(Borders.singleLine("Report")));
         root.addComponent(new Label("Tip: In path fields press Ctrl+Space or F2 for autocomplete."));
