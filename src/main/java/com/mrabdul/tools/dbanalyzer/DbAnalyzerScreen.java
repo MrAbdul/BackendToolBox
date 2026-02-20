@@ -98,6 +98,7 @@ public class DbAnalyzerScreen implements ToolScreen {
 
         Button run = runHolder[0];
         Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
+        form.addComponent(new Label("Base codebase root  (Ctrl+Space / F2):"));
         form.addComponent(baseRoot);
         form.addComponent(new Label("Target codebase root (migration branch) (Ctrl+Space / F2):"));
         form.addComponent(targetRoot);
