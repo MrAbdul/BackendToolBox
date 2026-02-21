@@ -27,7 +27,14 @@ A tool to diff SQL embedded in two codebases (base vs target) and report schema-
 - **Schema Hints**: Reports added/removed/modified SQL and, for DML, highlights newly referenced columns per table via heuristics.
 - **Flexible Options**: Filter by package, include/exclude dynamic SQL fragments, and export results to JSON.
 
-### 4.  Hello Tool
+### 4.  Cache TTL Inspector
+A config-driven static analysis tool to detect potential cache consistency issues and missing TTLs.
+- **Config-Driven Rules**: Define custom rules for cache `put`, `delete`, and TTL methods via JSON.
+- **Consistency Checks**: Detects "orphan" cache puts (missing corresponding deletes) and puts without expiration settings.
+- **Built-in Defaults**: Includes a default configuration targeting common Spring Cache patterns.
+- **Reporting**: Detailed text reports and structured JSON output.
+
+### 5.  Hello Tool
 A lightweight demonstration module used to showcase the extensibility of the TUI framework.
 
 ---
@@ -41,7 +48,7 @@ BackendToolBox is built on **Java 8** and **Spring Boot 2.7.x**, leveraging a mo
 - **Modular Tool System**:
     - `ToolModule` (TUI): Interface for tools that want to register a screen in the interactive TUI.
     - `CliCommand` (CLI): Interface for tools that want to provide a command-line command.
-- **Shared Engines & Services**: Business logic (e.g., `JdbcDetectorEngine`, `SslCheckerService`) is kept separate from UI logic, allowing the same logic to be reused across TUI and CLI.
+- **Shared Engines & Services**: Business logic (e.g., `JdbcDetectorEngine`, `SslCheckerService`, `CacheTtlInspectorEngine`) is kept separate from UI logic, allowing the same logic to be reused across TUI and CLI.
 
 ### 2. **Terminal User Interface (TUI)**
 Powered by **Lanterna 3.1.2**, the TUI provides a graphical-like experience in a standard terminal.
@@ -107,6 +114,9 @@ java -jar target/BackendToolBox-1.0-SNAPSHOT.jar --toolbox.mode=cli ssl-check --
 
 # Example: DB Analyzer (Compare two codebase versions)
 java -jar target/BackendToolBox-1.0-SNAPSHOT.jar --toolbox.mode=cli dbanalyzer --baseRoot ./repo-master --targetRoot ./repo-migration --includePackages com.example.dao --jsonOut ./report.json
+
+# Example: Cache TTL Inspection
+java -jar target/BackendToolBox-1.0-SNAPSHOT.jar --toolbox.mode=cli cachettl --sourceRoot ./src/main/java --jsonOut ./cache-report.json
 ```
 
 ---
@@ -178,6 +188,26 @@ Help:
 Exit codes:
 - `0` No schema-relevant SQL changes detected.
 - `1` SQL changes detected.
+- `2` Invalid usage / missing args
+
+### cachettl
+Scan a codebase for cache put/delete operations and TTL usage.
+
+Usage:
+```bash
+java -jar BackendToolBox.jar --toolbox.mode=cli cachettl --sourceRoot <path> [options]
+```
+Required:
+- `--sourceRoot <path>`: Root directory to scan (walks `*.java`).
+
+Optional:
+- `--config <path>`: Path to a custom rules JSON file.
+- `--dump-default-config`: Prints the built-in default config to stdout and exits.
+- `--jsonOut <path>`: Write JSON report to this path.
+
+Exit codes:
+- `0` OK (no findings)
+- `1` Findings detected
 - `2` Invalid usage / missing args
 
 JSON output (example):
@@ -280,6 +310,8 @@ The application automatically discovers new tools via Spring's component scannin
   - `ToolModule`, `ToolScreen`, `CliCommand` — extension points for implementing tools.
 - `com.mrabdul.tools.hello`
   - `HelloToolModule`, `HelloScreen` — sample module demonstrating TUI integration.
+- `com.mrabdul.tools.cachettl`
+  - `CacheTtlInspectorEngine`, `CacheTtlInspectorService`, `CacheTtlInspectorScreen`, `CacheTtlInspectorToolModule`, `CacheTtlInspectorCliCommand`, `CacheTtlInspectorRequest`, `CacheTtlInspectorResult`, `CacheTtlFinding`, `CacheTtlConfig` — config-driven inspection of cache lifecycle and TTLs.
 - `com.mrabdul.tools.dbanalyzer`
   - `DbAnalyzerService`, `DbAnalyzerScreen`, `DbAnalyzerToolModule`, `DbAnalyzerCliCommand`, `DbAnalyzerRequest`, `DbAnalyzerResult`, `SqlExtractor`, `SqlDiffEngine`, `SqlHeuristicParser`, `SqlArtifact`, `SqlMeta`, `SqlNormalizer`, `DbAnalyzerJsonReport` — extraction and diffing of embedded SQL across two source roots.
 - `com.mrabdul.tools.jdbcdetector`
