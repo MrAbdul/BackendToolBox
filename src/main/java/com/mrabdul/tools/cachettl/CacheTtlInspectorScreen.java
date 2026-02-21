@@ -7,6 +7,7 @@ import com.mrabdul.tui.AutoCompleteTextBox;
 import com.mrabdul.tui.StatusBar;
 import com.mrabdul.tui.TaskRunner;
 import org.springframework.stereotype.Component;
+import static com.mrabdul.tui.UiLayouts.*;
 
 import java.io.File;
 
@@ -25,22 +26,24 @@ public class CacheTtlInspectorScreen implements ToolScreen {
 
         root.addComponent(new Label("Cache TTL Inspector (config-driven)"));
 
-        Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
-        form.addComponent(new Label("Source root path:"));
         final AutoCompleteTextBox sourceRoot = new AutoCompleteTextBox(90, 1);
         sourceRoot.setText(new File(".").getAbsoluteFile().getParent());
-        form.addComponent(sourceRoot);
 
-        form.addComponent(new Label("Config path (JSON) (blank = built-in default)"));
         final AutoCompleteTextBox configPath = new AutoCompleteTextBox(90, 1);
         configPath.setText("");
-        form.addComponent(configPath);
 
-        form.addComponent(new Label("JSON output path (optional):"));
         final AutoCompleteTextBox jsonOutPath = new AutoCompleteTextBox(90, 1);
         jsonOutPath.setText("");
-        form.addComponent(jsonOutPath);
+        Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
 
+        form.addComponent(formLabel("Source root path:"));
+        form.addComponent(formInput(sourceRoot));
+
+        form.addComponent(formLabel("Config path (JSON) (blank = built-in default):"));
+        form.addComponent(formInput(configPath));
+
+        form.addComponent(formLabel("JSON output path (optional):"));
+        form.addComponent(formInput(jsonOutPath));
         root.addComponent(form.withBorder(Borders.singleLine("Options")));
 
         final TextBox output = new TextBox(new TerminalSize(120, 24), TextBox.Style.MULTI_LINE);

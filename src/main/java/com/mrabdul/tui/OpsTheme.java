@@ -6,11 +6,8 @@ import com.googlecode.lanterna.graphics.SimpleTheme;
 import com.googlecode.lanterna.graphics.Theme;
 import com.googlecode.lanterna.graphics.ThemeDefinition;
 import com.googlecode.lanterna.graphics.ThemeStyle;
-import com.googlecode.lanterna.gui2.Component;
-import com.googlecode.lanterna.gui2.ComponentRenderer;
-import com.googlecode.lanterna.gui2.WindowDecorationRenderer;
-import com.googlecode.lanterna.gui2.WindowPostRenderer;
-import com.googlecode.lanterna.gui2.TextBox;
+import com.googlecode.lanterna.gui2.*;
+
 public class OpsTheme implements Theme {
 
     private final ThemeDefinition def = new OpsThemeDefinition();
@@ -25,6 +22,9 @@ public class OpsTheme implements Theme {
         // TextBox + subclasses (AutoCompleteTextBox)
         if (clazz != null && TextBox.class.isAssignableFrom(clazz)) {
             return new TextBoxThemeDefinition();
+        }
+        if (clazz != null && ActionListBox.class.isAssignableFrom(clazz)) {
+            return new MenuThemeDefinition();
         }
         return def;
     }
@@ -86,7 +86,69 @@ public class OpsTheme implements Theme {
             return true;
         }
     }
+    private static class MenuThemeDefinition implements ThemeDefinition {
 
+        // Main app palette baseline (keep consistent)
+        private static final TextColor APP_BG   = new TextColor.RGB(12, 16, 20);
+        private static final TextColor FG       = new TextColor.RGB(230, 232, 235);
+        private static final TextColor MUTED    = new TextColor.RGB(150, 160, 170);
+
+        // Sidebar feel (a notch darker / different so it reads as a separate region)
+        private static final TextColor MENU_BG      = new TextColor.RGB(9, 12, 16);
+        private static final TextColor MENU_BG_HOV  = new TextColor.RGB(14, 18, 23);  // hover/prelight
+        private static final TextColor MENU_BG_ACT  = new TextColor.RGB(18, 24, 30);  // focused list / active
+
+        // Accent (same as your ops theme)
+        private static final TextColor ACCENT_BG = new TextColor.RGB(206, 171, 86);
+        private static final TextColor ACCENT_FG = new TextColor.RGB(12, 16, 20);
+
+        private final SimpleTheme normalTheme   = new SimpleTheme(MUTED, MENU_BG);
+        private final SimpleTheme preLightTheme = new SimpleTheme(FG, MENU_BG_HOV);
+        private final SimpleTheme activeTheme   = new SimpleTheme(FG, MENU_BG_ACT, SGR.BOLD);
+        private final SimpleTheme selectedTheme = new SimpleTheme(ACCENT_FG, ACCENT_BG, SGR.BOLD);
+
+        @Override public ThemeStyle getNormal()      { return normalTheme.getDefaultDefinition().getNormal(); }
+        @Override public ThemeStyle getPreLight()    { return preLightTheme.getDefaultDefinition().getNormal(); }
+
+        // Selected item should scream “you are here”
+        @Override public ThemeStyle getSelected()    { return selectedTheme.getDefaultDefinition().getNormal(); }
+
+        // Active == component focused (ActionListBox has focus)
+        @Override public ThemeStyle getActive()      { return activeTheme.getDefaultDefinition().getNormal(); }
+
+        // Insensitive: same background, extra muted
+        @Override public ThemeStyle getInsensitive() {
+            return new SimpleTheme(new TextColor.RGB(110, 118, 128), MENU_BG)
+                    .getDefaultDefinition().getNormal();
+        }
+
+        @Override public ThemeStyle getCustom(String name) { return getNormal(); }
+
+        @Override
+        public ThemeStyle getCustom(String name, ThemeStyle defaultValue) {
+            return defaultValue != null ? defaultValue : getNormal();
+        }
+
+        @Override
+        public boolean getBooleanProperty(String name, boolean defaultValue) {
+            return defaultValue;
+        }
+
+        @Override
+        public char getCharacter(String name, char defaultValue) {
+            return defaultValue;
+        }
+
+        @Override
+        public <T extends Component> ComponentRenderer<T> getRenderer(Class<T> type) {
+            return null;
+        }
+
+        @Override
+        public boolean isCursorVisible() {
+            return true;
+        }
+    }
     private static class OpsThemeDefinition implements ThemeDefinition {
 
         // Palette
