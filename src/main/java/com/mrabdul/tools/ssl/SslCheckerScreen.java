@@ -7,6 +7,8 @@ import com.mrabdul.tui.AutoCompleteTextBox;
 import com.mrabdul.tui.StatusBar;
 import com.mrabdul.tui.TaskRunner;
 import org.springframework.stereotype.Component;
+import static com.mrabdul.tui.UiLayouts.*;
+
 
 import java.util.concurrent.Future;
 
@@ -111,20 +113,21 @@ public class SslCheckerScreen implements ToolScreen {
 
         Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
 
-        form.addComponent(new Label("JKS path (Ctrl+Space or F2 to autocomplete):"));
-        form.addComponent(jksPath);
 
-        form.addComponent(new Label("JKS password: "));
-        form.addComponent(jksPassword);
+        form.addComponent(formLabel("JKS path (Ctrl+Space or F2 to autocomplete):"));
+        form.addComponent(formInput(jksPath));
 
-        form.addComponent(new Label("URL (https://host:port or host:port):"));
-        form.addComponent(url);
+        form.addComponent(formLabel("JKS password:"));
+        form.addComponent(formInput(jksPassword));
 
-        form.addComponent(new Label("Proxy (optional host:port): "));
-        form.addComponent(proxy);
+        form.addComponent(formLabel("URL (https://host:port or host:port):"));
+        form.addComponent(formInput(url));
 
-        form.addComponent(useAsTrustStore);
-        form.addComponent(hostnameVerification);
+        form.addComponent(formLabel("Proxy (optional host:port):"));
+        form.addComponent(formInput(proxy));
+
+        form.addComponent(span2(useAsTrustStore));
+        form.addComponent(span2(hostnameVerification));
 
         root.addComponent(form.withBorder(Borders.singleLine("Options")));
 
