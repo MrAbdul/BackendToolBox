@@ -1,11 +1,11 @@
 package com.mrabdul.tools.dbanalyzer;
 
-import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.gui2.*;
 import com.mrabdul.tools.ToolScreen;
 import com.mrabdul.tui.AutoCompleteTextBox;
 import com.mrabdul.tui.StatusBar;
 import com.mrabdul.tui.TaskRunner;
+import com.mrabdul.tui.UiSizes;
 import org.springframework.stereotype.Component;
 
 import static com.mrabdul.tui.UiForms.*;
@@ -24,22 +24,19 @@ public class DbAnalyzerScreen implements ToolScreen {
         Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
         root.addComponent(new Label("DB analyzer that will compare two codebases and generate a JSON report of differences"));
 
-        final AutoCompleteTextBox baseRoot = new AutoCompleteTextBox(90, 1);
-        final AutoCompleteTextBox targetRoot = new AutoCompleteTextBox(90, 1);
+        final AutoCompleteTextBox baseRoot = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
+        final AutoCompleteTextBox targetRoot = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
 
-        final TextBox includePackages = new TextBox(new TerminalSize(90, 1));
+        final TextBox includePackages = new TextBox(UiSizes.inputWide());
         includePackages.setText("");
 
-        final AutoCompleteTextBox jsonOutPath = new AutoCompleteTextBox(90, 1);
+        final AutoCompleteTextBox jsonOutPath = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
         jsonOutPath.setText("");
 
         final CheckBox includeDynamic = new CheckBox("Include dynamic SQL fragments (partial statements)");
         includeDynamic.setChecked(false);
 
-        final TextBox output = new TextBox(new TerminalSize(120, 24), TextBox.Style.MULTI_LINE);
-        output.setReadOnly(true);
-
-        final Button[] runHolder = new Button[1];
+        final TextBox output = UiSizes.reportBox();
 
         Panel form = twoColumnForm();
         row(form, "Base codebase root (Ctrl+Space / F2):", baseRoot);
@@ -47,8 +44,9 @@ public class DbAnalyzerScreen implements ToolScreen {
         row(form, "Optional package filter (comma-separated). Example: com.bbyn.dao,com.bbyn.repo", includePackages);
         row(form, "Optional JSON output path:", jsonOutPath);
         span2(form, includeDynamic);
-
         root.addComponent(form.withBorder(Borders.singleLine("Options")));
+
+        final Button[] runHolder = new Button[1];
 
         runHolder[0] = new Button("Run SQL Diff", new Runnable() {
             @Override
@@ -56,14 +54,8 @@ public class DbAnalyzerScreen implements ToolScreen {
                 String b = safeTrim(baseRoot.getText());
                 String t = safeTrim(targetRoot.getText());
 
-                if (b.isEmpty()) {
-                    statusBar.setWarn("Base root path is required.");
-                    return;
-                }
-                if (t.isEmpty()) {
-                    statusBar.setWarn("Target root path is required.");
-                    return;
-                }
+                if (b.isEmpty()) { statusBar.setWarn("Base root path is required."); return; }
+                if (t.isEmpty()) { statusBar.setWarn("Target root path is required."); return; }
 
                 DbAnalyzerRequest req = new DbAnalyzerRequest(
                         b,
@@ -98,21 +90,14 @@ public class DbAnalyzerScreen implements ToolScreen {
         });
 
         Button clearBtn = new Button("Clear output", new Runnable() {
-            @Override
-            public void run() {
+            @Override public void run() {
                 output.setText("");
                 statusBar.setInfo("Output cleared.");
             }
         });
 
-        Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
-        actions.addComponent(runHolder[0]);
-        actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
-        actions.addComponent(clearBtn);
-
-        root.addComponent(actions);
+        root.addComponent(actionsRow(runHolder[0], clearBtn));
         root.addComponent(output.withBorder(Borders.singleLine("Report")));
-
         return root;
     }
 

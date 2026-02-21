@@ -1,11 +1,11 @@
 package com.mrabdul.tools.ssl;
 
-import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.gui2.*;
 import com.mrabdul.tools.ToolScreen;
 import com.mrabdul.tui.AutoCompleteTextBox;
 import com.mrabdul.tui.StatusBar;
 import com.mrabdul.tui.TaskRunner;
+import com.mrabdul.tui.UiSizes;
 import org.springframework.stereotype.Component;
 
 import static com.mrabdul.tui.UiForms.*;
@@ -24,15 +24,15 @@ public class SslCheckerScreen implements ToolScreen {
         final Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
         root.addComponent(new Label("SSL checker that will validate SSL certificates and report any issues"));
 
-        final AutoCompleteTextBox jksPath = new AutoCompleteTextBox(80, 1);
+        final AutoCompleteTextBox jksPath = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
 
-        final TextBox jksPassword = new TextBox(new TerminalSize(40, 1));
+        final TextBox jksPassword = new TextBox(UiSizes.inputMed());
         jksPassword.setMask('*');
 
-        final TextBox url = new TextBox(new TerminalSize(80, 1));
+        final TextBox url = new TextBox(UiSizes.inputWide());
         url.setText("https://example.com:443");
 
-        final TextBox proxy = new TextBox(new TerminalSize(40, 1));
+        final TextBox proxy = new TextBox(UiSizes.inputMed());
         proxy.setText("");
 
         final CheckBox useAsTrustStore = new CheckBox("Use same JKS as TrustStore (recommended)");
@@ -41,10 +41,7 @@ public class SslCheckerScreen implements ToolScreen {
         final CheckBox hostnameVerification = new CheckBox("Enable hostname verification");
         hostnameVerification.setChecked(true);
 
-        final TextBox output = new TextBox(new TerminalSize(110, 20), TextBox.Style.MULTI_LINE);
-        output.setReadOnly(true);
-
-        final Button[] runBtnHolder = new Button[1];
+        final TextBox output = UiSizes.reportBox();
 
         Panel form = twoColumnForm();
         row(form, "JKS path (Ctrl+Space / F2):", jksPath);
@@ -53,8 +50,9 @@ public class SslCheckerScreen implements ToolScreen {
         row(form, "Proxy (optional host:port):", proxy);
         span2(form, useAsTrustStore);
         span2(form, hostnameVerification);
-
         root.addComponent(form.withBorder(Borders.singleLine("Options")));
+
+        final Button[] runBtnHolder = new Button[1];
 
         runBtnHolder[0] = new Button("Run SSL Check", new Runnable() {
             @Override
@@ -62,22 +60,13 @@ public class SslCheckerScreen implements ToolScreen {
                 final Button runBtn = runBtnHolder[0];
 
                 final String p = safeTrim(jksPath.getText());
-                final String pass = jksPassword.getText(); // password can be empty
+                final String pass = jksPassword.getText();
                 final String u = safeTrim(url.getText());
                 final String pr = safeTrim(proxy.getText());
 
-                if (p.isEmpty()) {
-                    statusBar.setWarn("JKS path is required.");
-                    return;
-                }
-                if (pass == null) {
-                    statusBar.setWarn("JKS password must be provided (empty allowed).");
-                    return;
-                }
-                if (u.isEmpty()) {
-                    statusBar.setWarn("URL/host is required.");
-                    return;
-                }
+                if (p.isEmpty()) { statusBar.setWarn("JKS path is required."); return; }
+                if (pass == null) { statusBar.setWarn("JKS password must be provided (empty allowed)."); return; }
+                if (u.isEmpty()) { statusBar.setWarn("URL/host is required."); return; }
 
                 final ProxyConfig proxyCfg = ProxyConfig.parse(pr);
 
@@ -113,19 +102,13 @@ public class SslCheckerScreen implements ToolScreen {
         });
 
         Button clearBtn = new Button("Clear output", new Runnable() {
-            @Override
-            public void run() {
+            @Override public void run() {
                 output.setText("");
                 statusBar.setInfo("Output cleared.");
             }
         });
 
-        Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
-        actions.addComponent(runBtnHolder[0]);
-        actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
-        actions.addComponent(clearBtn);
-
-        root.addComponent(actions);
+        root.addComponent(actionsRow(runBtnHolder[0], clearBtn));
         root.addComponent(output.withBorder(Borders.singleLine("Report")));
         return root;
     }

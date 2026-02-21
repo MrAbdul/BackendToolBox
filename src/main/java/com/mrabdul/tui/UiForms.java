@@ -1,5 +1,6 @@
 package com.mrabdul.tui;
 
+import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.gui2.*;
 
 public final class UiForms {
@@ -24,9 +25,9 @@ public final class UiForms {
         form.addComponent(label);
 
         field.setLayoutData(GridLayout.createLayoutData(
-                GridLayout.Alignment.BEGINNING,
+                GridLayout.Alignment.FILL,
                 GridLayout.Alignment.CENTER,
-                true,   // important: grow horizontally
+                true,
                 false
         ));
         form.addComponent(field);
@@ -38,9 +39,18 @@ public final class UiForms {
                 GridLayout.Alignment.CENTER,
                 true,
                 false,
-                2,  // span across both columns
+                2,
                 1
         ));
         form.addComponent(component);
+    }
+
+    /** Standard action row: [primary] [space] [secondary] */
+    public static Panel actionsRow(Button primary, Button secondary) {
+        Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
+        actions.addComponent(primary);
+        actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
+        actions.addComponent(secondary);
+        return actions;
     }
 }

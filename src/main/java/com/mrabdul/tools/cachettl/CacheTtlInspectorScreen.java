@@ -1,11 +1,11 @@
 package com.mrabdul.tools.cachettl;
 
-import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.gui2.*;
 import com.mrabdul.tools.ToolScreen;
 import com.mrabdul.tui.AutoCompleteTextBox;
 import com.mrabdul.tui.StatusBar;
 import com.mrabdul.tui.TaskRunner;
+import com.mrabdul.tui.UiSizes;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -26,13 +26,13 @@ public class CacheTtlInspectorScreen implements ToolScreen {
         Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
         root.addComponent(new Label("Cache TTL Inspector (config-driven)"));
 
-        final AutoCompleteTextBox sourceRoot = new AutoCompleteTextBox(90, 1);
+        final AutoCompleteTextBox sourceRoot = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
         sourceRoot.setText(new File(".").getAbsoluteFile().getParent());
 
-        final AutoCompleteTextBox configPath = new AutoCompleteTextBox(90, 1);
+        final AutoCompleteTextBox configPath = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
         configPath.setText("");
 
-        final AutoCompleteTextBox jsonOutPath = new AutoCompleteTextBox(90, 1);
+        final AutoCompleteTextBox jsonOutPath = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
         jsonOutPath.setText("");
 
         Panel form = twoColumnForm();
@@ -41,11 +41,9 @@ public class CacheTtlInspectorScreen implements ToolScreen {
         row(form, "JSON output path (optional):", jsonOutPath);
         root.addComponent(form.withBorder(Borders.singleLine("Options")));
 
-        final TextBox output = new TextBox(new TerminalSize(120, 24), TextBox.Style.MULTI_LINE);
-        output.setReadOnly(true);
+        final TextBox output = UiSizes.reportBox();
 
         final Button[] runHolder = new Button[1];
-
         runHolder[0] = new Button("Run scan", new Runnable() {
             @Override
             public void run() {
@@ -102,22 +100,15 @@ public class CacheTtlInspectorScreen implements ToolScreen {
         });
 
         Button clearBtn = new Button("Clear output", new Runnable() {
-            @Override
-            public void run() {
+            @Override public void run() {
                 output.setText("");
                 statusBar.setInfo("Output cleared.");
             }
         });
 
-        Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
-        actions.addComponent(runHolder[0]);
-        actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
-        actions.addComponent(clearBtn);
-
-        root.addComponent(actions);
+        root.addComponent(actionsRow(runHolder[0], clearBtn));
         root.addComponent(output.withBorder(Borders.singleLine("Report")));
         root.addComponent(new Label("Tip: In path fields press Ctrl+Space or F2 for autocomplete."));
-
         return root;
     }
 

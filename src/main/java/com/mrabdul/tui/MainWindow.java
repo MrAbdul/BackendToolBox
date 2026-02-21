@@ -37,8 +37,8 @@ public class MainWindow {
         header.addComponent(new Label("F10: Exit"), BorderLayout.Location.RIGHT);
 
         // Left menu
-        final ActionListBox menu = new ActionListBox(new TerminalSize(28, 25));
-        menu.setPreferredSize(new TerminalSize(28, 25));
+        final ActionListBox menu = new ActionListBox(new TerminalSize(UiSizes.MENU_W, UiSizes.MENU_H));
+        menu.setPreferredSize(new TerminalSize(UiSizes.MENU_W, UiSizes.MENU_H));
 
         // Center content
         final Panel contentHost = new Panel(new LinearLayout(Direction.VERTICAL));

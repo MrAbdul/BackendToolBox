@@ -1,11 +1,11 @@
 package com.mrabdul.tools.jdbcdetector;
 
-import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.gui2.*;
 import com.mrabdul.tools.ToolScreen;
 import com.mrabdul.tui.AutoCompleteTextBox;
 import com.mrabdul.tui.StatusBar;
 import com.mrabdul.tui.TaskRunner;
+import com.mrabdul.tui.UiSizes;
 
 import java.io.File;
 import java.util.List;
@@ -28,13 +28,13 @@ public class JdbcDetectorScreen implements ToolScreen {
         Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
         root.addComponent(new Label("JDBC Detector (Static Analysis)"));
 
-        final AutoCompleteTextBox sourceRootBox = new AutoCompleteTextBox(80, 1);
+        final AutoCompleteTextBox sourceRootBox = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
         sourceRootBox.setText(new File(".").getAbsoluteFile().getParent());
 
-        final TextBox daoFilterBox = new TextBox(new TerminalSize(80, 1));
+        final TextBox daoFilterBox = new TextBox(UiSizes.inputWide());
         daoFilterBox.setText("");
 
-        final AutoCompleteTextBox jsonOutBox = new AutoCompleteTextBox(80, 1);
+        final AutoCompleteTextBox jsonOutBox = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
         jsonOutBox.setText("");
 
         final CheckBox includeWarnings = new CheckBox("Include warnings");
@@ -49,10 +49,7 @@ public class JdbcDetectorScreen implements ToolScreen {
         row(form, "JSON output path (optional):", jsonOutBox);
         span2(form, includeWarnings);
         span2(form, includeParseErrors);
-
         root.addComponent(form.withBorder(Borders.singleLine("Options")));
-
-        Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
 
         Button runBtn = new Button("Run scan", new Runnable() {
             @Override
@@ -65,6 +62,7 @@ public class JdbcDetectorScreen implements ToolScreen {
                     statusBar.setError("Source root path is empty.");
                     return;
                 }
+
                 File rootDir = new File(sourceRoot);
                 if (!rootDir.exists() || !rootDir.isDirectory()) {
                     statusBar.setError("Invalid source root (not a directory): " + sourceRoot);
@@ -101,11 +99,8 @@ public class JdbcDetectorScreen implements ToolScreen {
 
                             if (outputBox != null) outputBox.setText(sb.toString());
 
-                            if (result.isOk()) {
-                                statusBar.setInfo("Scan complete: OK (0 issues).");
-                            } else {
-                                statusBar.setWarn("Scan complete: " + result.getIssueCount() + " issue(s) found.");
-                            }
+                            if (result.isOk()) statusBar.setInfo("Scan complete: OK (0 issues).");
+                            else statusBar.setWarn("Scan complete: " + result.getIssueCount() + " issue(s) found.");
                         } catch (Exception e) {
                             if (outputBox != null) outputBox.setText("Scan failed:\n" + e.toString());
                             statusBar.setError("Scan failed: " + e.getMessage());
@@ -116,23 +111,16 @@ public class JdbcDetectorScreen implements ToolScreen {
         });
 
         Button clearBtn = new Button("Clear output", new Runnable() {
-            @Override
-            public void run() {
+            @Override public void run() {
                 if (outputBox != null) outputBox.setText("");
                 statusBar.setInfo("Output cleared.");
             }
         });
 
-        actions.addComponent(runBtn);
-        actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
-        actions.addComponent(clearBtn);
+        root.addComponent(actionsRow(runBtn, clearBtn));
 
-        root.addComponent(actions);
-
-        outputBox = new TextBox(new TerminalSize(110, 22), TextBox.Style.MULTI_LINE);
-        outputBox.setReadOnly(true);
+        outputBox = UiSizes.reportBox();
         root.addComponent(outputBox.withBorder(Borders.singleLine("Report")));
-
         root.addComponent(new Label("Tip: In path fields press Ctrl+Space or F2 for autocomplete."));
         return root;
     }
