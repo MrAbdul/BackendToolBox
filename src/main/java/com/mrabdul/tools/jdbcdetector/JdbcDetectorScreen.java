@@ -11,13 +11,12 @@ import java.io.File;
 import java.util.List;
 import java.util.concurrent.Future;
 
+import static com.mrabdul.tui.UiForms.*;
+
 public class JdbcDetectorScreen implements ToolScreen {
 
     private final JdbcDetectorService service;
-
     private Future<?> runningTask;
-
-    // UI refs (so we can update after run)
     private TextBox outputBox;
 
     public JdbcDetectorScreen(JdbcDetectorService service) {
@@ -29,42 +28,30 @@ public class JdbcDetectorScreen implements ToolScreen {
         Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
         root.addComponent(new Label("JDBC Detector (Static Analysis)"));
 
-        // ---- Inputs ----
-        Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
-
-        // Source root (with Ctrl+Space / F2 autocomplete via AutoCompleteTextBox)
-        form.addComponent(new Label("Source root path:"));
         final AutoCompleteTextBox sourceRootBox = new AutoCompleteTextBox(80, 1);
         sourceRootBox.setText(new File(".").getAbsoluteFile().getParent());
-        form.addComponent(sourceRootBox);
 
-        // DAO base types filter
-        form.addComponent(new Label("DAO base types (comma-separated):"));
         final TextBox daoFilterBox = new TextBox(new TerminalSize(80, 1));
-        daoFilterBox.setText(""); // empty = analyze everything
-        form.addComponent(daoFilterBox);
+        daoFilterBox.setText("");
 
-        // JSON output path (optional)
-        form.addComponent(new Label("JSON output path (optional):"));
         final AutoCompleteTextBox jsonOutBox = new AutoCompleteTextBox(80, 1);
         jsonOutBox.setText("");
-        form.addComponent(jsonOutBox);
 
-        // Include warnings
-        form.addComponent(new Label("Include warnings:"));
-        final CheckBox includeWarnings = new CheckBox();
+        final CheckBox includeWarnings = new CheckBox("Include warnings");
         includeWarnings.setChecked(true);
-        form.addComponent(includeWarnings);
 
-        // Include parse errors
-        form.addComponent(new Label("Include parse errors:"));
-        final CheckBox includeParseErrors = new CheckBox();
+        final CheckBox includeParseErrors = new CheckBox("Include parse errors");
         includeParseErrors.setChecked(true);
-        form.addComponent(includeParseErrors);
+
+        Panel form = twoColumnForm();
+        row(form, "Source root path:", sourceRootBox);
+        row(form, "DAO base types (comma-separated):", daoFilterBox);
+        row(form, "JSON output path (optional):", jsonOutBox);
+        span2(form, includeWarnings);
+        span2(form, includeParseErrors);
 
         root.addComponent(form.withBorder(Borders.singleLine("Options")));
 
-        // ---- Buttons ----
         Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
 
         Button runBtn = new Button("Run scan", new Runnable() {
@@ -74,7 +61,6 @@ public class JdbcDetectorScreen implements ToolScreen {
                 final String daoRaw = safeTrim(daoFilterBox.getText());
                 final String jsonOut = safeTrim(jsonOutBox.getText());
 
-                // Basic validation (fail fast)
                 if (sourceRoot.isEmpty()) {
                     statusBar.setError("Source root path is empty.");
                     return;
@@ -95,13 +81,10 @@ public class JdbcDetectorScreen implements ToolScreen {
                         jsonOut.isEmpty() ? null : jsonOut
                 );
 
-                // cancel previous run (optional)
                 if (runningTask != null) runningTask.cancel(true);
 
                 statusBar.setInfo("Scanning: " + sourceRoot + (req.hasDaoFilter() ? " (DAO filter ON)" : " (no DAO filter)"));
-                if (outputBox != null) {
-                    outputBox.setText("Running scan...\n");
-                }
+                if (outputBox != null) outputBox.setText("Running scan...\n");
 
                 runningTask = taskRunner.submit(new Runnable() {
                     @Override
@@ -116,9 +99,7 @@ public class JdbcDetectorScreen implements ToolScreen {
                                     .append("Parse errors: ").append(result.getParseErrorCount()).append("\n\n")
                                     .append(result.getReportText() == null ? "" : result.getReportText());
 
-                            if (outputBox != null) {
-                                outputBox.setText(sb.toString());
-                            }
+                            if (outputBox != null) outputBox.setText(sb.toString());
 
                             if (result.isOk()) {
                                 statusBar.setInfo("Scan complete: OK (0 issues).");
@@ -126,9 +107,7 @@ public class JdbcDetectorScreen implements ToolScreen {
                                 statusBar.setWarn("Scan complete: " + result.getIssueCount() + " issue(s) found.");
                             }
                         } catch (Exception e) {
-                            if (outputBox != null) {
-                                outputBox.setText("Scan failed:\n" + e.toString());
-                            }
+                            if (outputBox != null) outputBox.setText("Scan failed:\n" + e.toString());
                             statusBar.setError("Scan failed: " + e.getMessage());
                         }
                     }
@@ -150,14 +129,11 @@ public class JdbcDetectorScreen implements ToolScreen {
 
         root.addComponent(actions);
 
-        // ---- Output ----
         outputBox = new TextBox(new TerminalSize(110, 22), TextBox.Style.MULTI_LINE);
         outputBox.setReadOnly(true);
         root.addComponent(outputBox.withBorder(Borders.singleLine("Report")));
 
-        // little UX hint
         root.addComponent(new Label("Tip: In path fields press Ctrl+Space or F2 for autocomplete."));
-
         return root;
     }
 

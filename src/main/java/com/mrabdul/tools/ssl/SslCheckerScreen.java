@@ -7,10 +7,8 @@ import com.mrabdul.tui.AutoCompleteTextBox;
 import com.mrabdul.tui.StatusBar;
 import com.mrabdul.tui.TaskRunner;
 import org.springframework.stereotype.Component;
-import static com.mrabdul.tui.UiLayouts.*;
 
-
-import java.util.concurrent.Future;
+import static com.mrabdul.tui.UiForms.*;
 
 @Component
 public class SslCheckerScreen implements ToolScreen {
@@ -26,7 +24,8 @@ public class SslCheckerScreen implements ToolScreen {
         final Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
         root.addComponent(new Label("SSL checker that will validate SSL certificates and report any issues"));
 
-        final AutoCompleteTextBox jksPath = new AutoCompleteTextBox(80,1);
+        final AutoCompleteTextBox jksPath = new AutoCompleteTextBox(80, 1);
+
         final TextBox jksPassword = new TextBox(new TerminalSize(40, 1));
         jksPassword.setMask('*');
 
@@ -34,7 +33,7 @@ public class SslCheckerScreen implements ToolScreen {
         url.setText("https://example.com:443");
 
         final TextBox proxy = new TextBox(new TerminalSize(40, 1));
-        proxy.setText(""); // e.g. 10.10.10.10:8080
+        proxy.setText("");
 
         final CheckBox useAsTrustStore = new CheckBox("Use same JKS as TrustStore (recommended)");
         useAsTrustStore.setChecked(true);
@@ -42,40 +41,50 @@ public class SslCheckerScreen implements ToolScreen {
         final CheckBox hostnameVerification = new CheckBox("Enable hostname verification");
         hostnameVerification.setChecked(true);
 
-        final TextBox output = new TextBox(new TerminalSize(110, 20));
+        final TextBox output = new TextBox(new TerminalSize(110, 20), TextBox.Style.MULTI_LINE);
         output.setReadOnly(true);
 
         final Button[] runBtnHolder = new Button[1];
 
+        Panel form = twoColumnForm();
+        row(form, "JKS path (Ctrl+Space / F2):", jksPath);
+        row(form, "JKS password:", jksPassword);
+        row(form, "URL (https://host:port or host:port):", url);
+        row(form, "Proxy (optional host:port):", proxy);
+        span2(form, useAsTrustStore);
+        span2(form, hostnameVerification);
+
+        root.addComponent(form.withBorder(Borders.singleLine("Options")));
+
         runBtnHolder[0] = new Button("Run SSL Check", new Runnable() {
             @Override
             public void run() {
-
                 final Button runBtn = runBtnHolder[0];
 
-                final String p = jksPath.getText();
-                final String pass = jksPassword.getText();
-                final String u = url.getText();
-                final String pr = proxy.getText();
+                final String p = safeTrim(jksPath.getText());
+                final String pass = jksPassword.getText(); // password can be empty
+                final String u = safeTrim(url.getText());
+                final String pr = safeTrim(proxy.getText());
 
-                if (p == null || p.trim().isEmpty()) {
+                if (p.isEmpty()) {
                     statusBar.setWarn("JKS path is required.");
                     return;
                 }
                 if (pass == null) {
-                    statusBar.setWarn("JKS password is required (empty allowed but must be provided).");
+                    statusBar.setWarn("JKS password must be provided (empty allowed).");
                     return;
                 }
-                if (u == null || u.trim().isEmpty()) {
+                if (u.isEmpty()) {
                     statusBar.setWarn("URL/host is required.");
                     return;
                 }
 
                 final ProxyConfig proxyCfg = ProxyConfig.parse(pr);
+
                 final SslCheckRequest req = new SslCheckRequest(
-                        p.trim(),
+                        p,
                         pass,
-                        u.trim(),
+                        u,
                         proxyCfg,
                         useAsTrustStore.isChecked(),
                         hostnameVerification.isChecked()
@@ -102,43 +111,22 @@ public class SslCheckerScreen implements ToolScreen {
                 });
             }
         });
+
         Button clearBtn = new Button("Clear output", new Runnable() {
             @Override
             public void run() {
-                if (output != null) output.setText("");
+                output.setText("");
                 statusBar.setInfo("Output cleared.");
             }
         });
-        final Button runBtn = runBtnHolder[0];
-
-        Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
-
-
-        form.addComponent(formLabel("JKS path (Ctrl+Space or F2 to autocomplete):"));
-        form.addComponent(formInput(jksPath));
-
-        form.addComponent(formLabel("JKS password:"));
-        form.addComponent(formInput(jksPassword));
-
-        form.addComponent(formLabel("URL (https://host:port or host:port):"));
-        form.addComponent(formInput(url));
-
-        form.addComponent(formLabel("Proxy (optional host:port):"));
-        form.addComponent(formInput(proxy));
-
-        form.addComponent(span2(useAsTrustStore));
-        form.addComponent(span2(hostnameVerification));
-
-        root.addComponent(form.withBorder(Borders.singleLine("Options")));
 
         Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
-        actions.addComponent(runBtn);
+        actions.addComponent(runBtnHolder[0]);
         actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
         actions.addComponent(clearBtn);
-        root.addComponent(actions);
-        output.setReadOnly(true);
-        root.addComponent(output.withBorder(Borders.singleLine("Report")));
 
+        root.addComponent(actions);
+        root.addComponent(output.withBorder(Borders.singleLine("Report")));
         return root;
     }
 
@@ -150,5 +138,9 @@ public class SslCheckerScreen implements ToolScreen {
     @Override
     public void onHide(StatusBar statusBar) {
         // no-op
+    }
+
+    private static String safeTrim(String s) {
+        return s == null ? "" : s.trim();
     }
 }

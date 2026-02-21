@@ -8,6 +8,8 @@ import com.mrabdul.tui.StatusBar;
 import com.mrabdul.tui.TaskRunner;
 import org.springframework.stereotype.Component;
 
+import static com.mrabdul.tui.UiForms.*;
+
 @Component
 public class DbAnalyzerScreen implements ToolScreen {
 
@@ -18,34 +20,41 @@ public class DbAnalyzerScreen implements ToolScreen {
     }
 
     @Override
-    public Panel render(StatusBar statusBar, TaskRunner taskRunner) {
+    public Panel render(final StatusBar statusBar, final TaskRunner taskRunner) {
         Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
         root.addComponent(new Label("DB analyzer that will compare two codebases and generate a JSON report of differences"));
 
+        final AutoCompleteTextBox baseRoot = new AutoCompleteTextBox(90, 1);
+        final AutoCompleteTextBox targetRoot = new AutoCompleteTextBox(90, 1);
 
-        AutoCompleteTextBox baseRoot = new AutoCompleteTextBox(90, 1);
-        AutoCompleteTextBox targetRoot = new AutoCompleteTextBox(90, 1);
+        final TextBox includePackages = new TextBox(new TerminalSize(90, 1));
+        includePackages.setText("");
 
-        TextBox includePackages = new TextBox(new TerminalSize(90, 1));
-        includePackages.setText(""); // optional: com.bbyn.dao,com.bbyn.repo
+        final AutoCompleteTextBox jsonOutPath = new AutoCompleteTextBox(90, 1);
+        jsonOutPath.setText("");
 
-        AutoCompleteTextBox jsonOutPath = new AutoCompleteTextBox(90, 1);
-        jsonOutPath.setText(""); // optional
-
-        CheckBox includeDynamic = new CheckBox("Include dynamic SQL fragments (partial statements)");
+        final CheckBox includeDynamic = new CheckBox("Include dynamic SQL fragments (partial statements)");
         includeDynamic.setChecked(false);
 
-        TextBox output = new TextBox(new TerminalSize(120, 24));
+        final TextBox output = new TextBox(new TerminalSize(120, 24), TextBox.Style.MULTI_LINE);
         output.setReadOnly(true);
 
         final Button[] runHolder = new Button[1];
 
+        Panel form = twoColumnForm();
+        row(form, "Base codebase root (Ctrl+Space / F2):", baseRoot);
+        row(form, "Target codebase root (migration branch) (Ctrl+Space / F2):", targetRoot);
+        row(form, "Optional package filter (comma-separated). Example: com.bbyn.dao,com.bbyn.repo", includePackages);
+        row(form, "Optional JSON output path:", jsonOutPath);
+        span2(form, includeDynamic);
+
+        root.addComponent(form.withBorder(Borders.singleLine("Options")));
+
         runHolder[0] = new Button("Run SQL Diff", new Runnable() {
             @Override
             public void run() {
-
-                String b = baseRoot.getText() == null ? "" : baseRoot.getText().trim();
-                String t = targetRoot.getText() == null ? "" : targetRoot.getText().trim();
+                String b = safeTrim(baseRoot.getText());
+                String t = safeTrim(targetRoot.getText());
 
                 if (b.isEmpty()) {
                     statusBar.setWarn("Base root path is required.");
@@ -59,9 +68,9 @@ public class DbAnalyzerScreen implements ToolScreen {
                 DbAnalyzerRequest req = new DbAnalyzerRequest(
                         b,
                         t,
-                        includePackages.getText() == null ? "" : includePackages.getText().trim(),
+                        safeTrim(includePackages.getText()),
                         includeDynamic.isChecked(),
-                        jsonOutPath.getText() == null ? "" : jsonOutPath.getText().trim()
+                        safeTrim(jsonOutPath.getText())
                 );
 
                 output.setText("");
@@ -87,32 +96,21 @@ public class DbAnalyzerScreen implements ToolScreen {
                 });
             }
         });
+
         Button clearBtn = new Button("Clear output", new Runnable() {
             @Override
             public void run() {
-                if (output != null) output.setText("");
+                output.setText("");
                 statusBar.setInfo("Output cleared.");
             }
         });
 
-
-        Button run = runHolder[0];
-        Panel form = new Panel(new GridLayout(2).setHorizontalSpacing(1).setVerticalSpacing(1));
-        form.addComponent(new Label("Base codebase root  (Ctrl+Space / F2):"));
-        form.addComponent(baseRoot);
-        form.addComponent(new Label("Target codebase root (migration branch) (Ctrl+Space / F2):"));
-        form.addComponent(targetRoot);
-        form.addComponent(new Label("Optional package filter (comma-separated). Example: com.bbyn.dao,com.bbyn.repo"));
-        form.addComponent(includePackages);
-        form.addComponent(new Label("Optional JSON output path:"));
-        form.addComponent(jsonOutPath);
-        form.addComponent(includeDynamic);
-        root.addComponent(form.withBorder(Borders.singleLine("Options")));
         Panel actions = new Panel(new LinearLayout(Direction.HORIZONTAL));
-        actions.addComponent(run);
+        actions.addComponent(runHolder[0]);
+        actions.addComponent(new EmptySpace(new TerminalSize(1, 1)));
         actions.addComponent(clearBtn);
+
         root.addComponent(actions);
-        output.setReadOnly(true);
         root.addComponent(output.withBorder(Borders.singleLine("Report")));
 
         return root;
@@ -126,5 +124,9 @@ public class DbAnalyzerScreen implements ToolScreen {
     @Override
     public void onHide(StatusBar statusBar) {
         // no-op
+    }
+
+    private static String safeTrim(String s) {
+        return s == null ? "" : s.trim();
     }
 }
