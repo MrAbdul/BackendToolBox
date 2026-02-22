@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 public class SqlHeuristicParser {
 
     // Captures identifiers like SCHEMA.TABLE or TABLE or "QuotedName"
-    private static final Pattern IDENT = Pattern.compile("\"[^\"]+\"|[A-Z_][A-Z0-9_\\$#]*?(?:\\.[A-Z_][A-Z0-9_\\$#]*)?");
+    private static final Pattern IDENT = Pattern.compile("\"[^\"]+\"|[A-Z_][A-Z0-9_\\$#]*(?:\\.[A-Z_][A-Z0-9_\\$#]*)?");
 
     public SqlMeta parse(String normalizedSql) {
         if (normalizedSql == null || normalizedSql.isEmpty()) return SqlMeta.unknown();
