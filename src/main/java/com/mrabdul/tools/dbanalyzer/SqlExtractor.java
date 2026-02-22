@@ -81,7 +81,7 @@ public class SqlExtractor {
         List<SqlArtifact> artifacts = new ArrayList<>();
 
         cu.accept(new VoidVisitorAdapter<Void>() {
-
+            int callOrdinal=0;
             String currentClass = "";
             String currentMethod = "";
 
@@ -104,7 +104,7 @@ public class SqlExtractor {
 
                 builderContent.clear();
                 builderDynamic.clear();
-
+                callOrdinal =0;
                 super.visit(n, arg);
 
                 currentMethod = prev;
@@ -185,14 +185,16 @@ public class SqlExtractor {
                     if (e instanceof StringLiteralExpr) {
                         String raw = ((StringLiteralExpr) e).asString();
                         if (SqlNormalizer.looksLikeSql(raw)) {
-                            addArtifactFrom(relativeFile, currentClass, currentMethod + ":call@" + lineOf(n), n, raw, false);
+                            String owner=currentMethod +":call#"+(++callOrdinal);
+                            addArtifactFrom(relativeFile, currentClass, owner, n, raw, false);
                         }
                     } else {
                         Optional<String> lit = evalLiteralString(e);
                         if (lit.isPresent()) {
                             String raw = lit.get();
                             if (SqlNormalizer.looksLikeSql(raw)) {
-                                addArtifactFrom(relativeFile, currentClass, currentMethod + ":call@" + lineOf(n), n, raw, false);
+                                String owner=currentMethod +":call#"+(++callOrdinal);
+                                addArtifactFrom(relativeFile, currentClass, owner, n, raw, false);
                             }
                         }
                     }
