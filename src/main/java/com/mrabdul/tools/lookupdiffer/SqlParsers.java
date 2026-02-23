@@ -6,13 +6,12 @@ import java.util.List;
 public final class SqlParsers {
     private SqlParsers() {}
 
-    /** Normalize identifier token: trim + collapse spaces + optionally upper-case later in engine */
     public static String normToken(String s) {
         if (s == null) return "";
         return s.trim().replaceAll("\\s+", " ");
     }
 
-    /** Split by commas, respecting quotes and parentheses depth (for VALUES lists, column lists, etc.) */
+    /** Split by commas at top-level, respecting quotes and parentheses depth */
     public static List<String> splitTopLevelComma(String raw) {
         List<String> out = new ArrayList<String>();
         if (raw == null) return out;
@@ -28,7 +27,6 @@ public final class SqlParsers {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
 
-            // handle quote toggle (very basic, but good enough for exports)
             if (c == '\'' && !inDouble) {
                 inSingle = !inSingle;
                 cur.append(c);
@@ -60,7 +58,7 @@ public final class SqlParsers {
         return out;
     }
 
-    /** Find substring between first occurrence of openChar and its matching closeChar. Returns null if not found. */
+    /** Returns substring inside first balanced (...) after the first '(' */
     public static String firstBalanced(String s, char openChar, char closeChar) {
         if (s == null) return null;
         int start = s.indexOf(openChar);
@@ -91,7 +89,7 @@ public final class SqlParsers {
         return null;
     }
 
-    public static String flattenSqlLine(String s) {
+    public static String flattenSql(String s) {
         if (s == null) return "";
         return s.replaceAll("[\\r\\n]+", " ").replaceAll("\\s+", " ").trim();
     }

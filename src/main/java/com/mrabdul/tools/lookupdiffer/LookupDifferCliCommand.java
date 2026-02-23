@@ -22,7 +22,7 @@ public class LookupDifferCliCommand implements CliCommand {
 
     @Override
     public String description() {
-        return "Diff exported lookup-table SQL folders (DDL + INSERTs) and generate schema/data patches.";
+        return "Diff lookup export SQL folders (DDL + PK + INSERTs) and generate schema + insert/update patches.";
     }
 
     @Override
@@ -59,10 +59,7 @@ public class LookupDifferCliCommand implements CliCommand {
         );
 
         LookupDifferResult res = service.run(req);
-
-        if (res.getReportText() != null && !res.getReportText().trim().isEmpty()) {
-            System.out.println(res.getReportText());
-        }
+        System.out.println(res.getReportText());
 
         return res.isOk() ? 0 : 1;
     }
@@ -89,19 +86,24 @@ public class LookupDifferCliCommand implements CliCommand {
         System.out.println("  java -jar BackendToolBox.jar --toolbox.mode=cli lookupdiffer --sourceDir <path> --targetDir <path> [options]");
         System.out.println();
         System.out.println("Required:");
-        System.out.println("  --sourceDir <path>        Folder containing SOURCE SQL exports (e.g., PROD)");
-        System.out.println("  --targetDir <path>        Folder containing TARGET SQL exports (e.g., UAT)");
+        System.out.println("  --sourceDir <path>        Folder containing SOURCE exports (e.g., PROD)");
+        System.out.println("  --targetDir <path>        Folder containing TARGET exports (e.g., UAT)");
         System.out.println();
         System.out.println("Optional:");
-        System.out.println("  --outDir <path>           Write patch files: schema_patch.sql, data_patch.sql, missing_tables.sql");
-        System.out.println("  --jsonOut <path>          Write findings as JSON");
+        System.out.println("  --outDir <path>           Writes: schema_patch.sql, insert_patch.sql, update_patch.sql, missing_tables.sql");
+        System.out.println("  --jsonOut <path>          Write findings list as JSON");
         System.out.println("  --tableContains <text>    Only consider tables whose name contains this text");
         System.out.println("  --caseInsensitive <true|false>  Default: true");
         System.out.println("  --help, -h");
         System.out.println();
+        System.out.println("Notes:");
+        System.out.println("  - File encoding is hardcoded to windows-1251 (CP1251).");
+        System.out.println("  - UPDATEs are generated using PK columns parsed from *_PK.sql files.");
+        System.out.println("  - v0.1 ignores constraints/PK for schema diff, but uses PK for UPDATE WHERE clause.");
+        System.out.println();
         System.out.println("Exit codes:");
         System.out.println("  0  OK (no diffs found)");
-        System.out.println("  1  Diffs found (missing tables/cols/rows) or parse errors");
+        System.out.println("  1  Diffs found (missing tables/cols/rows or differing rows) or parse errors");
         System.out.println("  2  Invalid usage / missing args");
     }
 }

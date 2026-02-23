@@ -25,7 +25,7 @@ public class LookupDifferScreen implements ToolScreen {
     @Override
     public Component render(final StatusBar statusBar, final TaskRunner taskRunner) {
         Panel root = new Panel(new LinearLayout(Direction.VERTICAL));
-        root.addComponent(new Label("Lookup Differ (DDL + INSERT exports)"));
+        root.addComponent(new Label("Lookup Differ (DDL + PK + INSERT exports)"));
 
         final AutoCompleteTextBox sourceDir = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
         final AutoCompleteTextBox targetDir = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
@@ -55,8 +55,7 @@ public class LookupDifferScreen implements ToolScreen {
         root.addComponent(form.withBorder(Borders.singleLine("Options")));
 
         Button runBtn = new Button("Run diff", new Runnable() {
-            @Override
-            public void run() {
+            @Override public void run() {
                 String s = safe(sourceDir.getText());
                 String t = safe(targetDir.getText());
 
@@ -64,7 +63,6 @@ public class LookupDifferScreen implements ToolScreen {
                     statusBar.setError("sourceDir/targetDir is empty.");
                     return;
                 }
-
                 if (!new File(s).isDirectory()) {
                     statusBar.setError("Invalid sourceDir: " + s);
                     return;
@@ -89,17 +87,19 @@ public class LookupDifferScreen implements ToolScreen {
                 if (outputBox != null) outputBox.setText("Running diff...\n");
 
                 runningTask = taskRunner.submit(new Runnable() {
-                    @Override
-                    public void run() {
+                    @Override public void run() {
                         try {
                             LookupDifferResult res = service.run(req);
                             if (outputBox != null) outputBox.setText(res.getReportText());
 
-                            if (res.isOk()) statusBar.setInfo("Diff complete: OK (no diffs).");
-                            else statusBar.setWarn("Diff complete: diffs found. Missing tables="
-                                    + res.getMissingTables()
-                                    + ", cols=" + res.getMissingColumns()
-                                    + ", rows=" + res.getMissingRows());
+                            if (res.isOk()) {
+                                statusBar.setInfo("Diff complete: OK (no diffs).");
+                            } else {
+                                statusBar.setWarn("Diff complete: tables=" + res.getMissingTables()
+                                        + " cols=" + res.getMissingColumns()
+                                        + " inserts=" + res.getMissingRows()
+                                        + " updates=" + res.getDifferingRows());
+                            }
                         } catch (Exception e) {
                             if (outputBox != null) outputBox.setText("Diff failed:\n" + e.toString());
                             statusBar.setError("Diff failed: " + e.getMessage());

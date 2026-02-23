@@ -6,8 +6,9 @@ public class LookupDifferRequest {
 
     private final boolean caseInsensitive;
     private final String tableNameContains; // optional substring filter
-    private final String outDir;            // optional
-    private final String jsonOut;           // optional
+
+    private final String outDir;   // optional
+    private final String jsonOut;  // optional
 
     public LookupDifferRequest(String sourceDir,
                                String targetDir,
