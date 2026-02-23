@@ -8,7 +8,7 @@ public class LookupDifferResult {
     private final long missingTables;
     private final long missingColumns;
     private final long missingRows;
-    private final long differingRows;
+    private final long mismatchedRows;
     private final long warnings;
     private final long parseErrors;
 
@@ -18,7 +18,7 @@ public class LookupDifferResult {
                               long missingTables,
                               long missingColumns,
                               long missingRows,
-                              long differingRows,
+                              long mismatchedRows,
                               long warnings,
                               long parseErrors,
                               String reportText) {
@@ -26,7 +26,7 @@ public class LookupDifferResult {
         this.missingTables = missingTables;
         this.missingColumns = missingColumns;
         this.missingRows = missingRows;
-        this.differingRows = differingRows;
+        this.mismatchedRows = mismatchedRows;
         this.warnings = warnings;
         this.parseErrors = parseErrors;
         this.reportText = reportText;
@@ -36,16 +36,12 @@ public class LookupDifferResult {
     public long getMissingTables() { return missingTables; }
     public long getMissingColumns() { return missingColumns; }
     public long getMissingRows() { return missingRows; }
-    public long getDifferingRows() { return differingRows; }
+    public long getMismatchedRows() { return mismatchedRows; }
     public long getWarnings() { return warnings; }
     public long getParseErrors() { return parseErrors; }
     public String getReportText() { return reportText; }
 
     public boolean isOk() {
-        return missingTables == 0
-                && missingColumns == 0
-                && missingRows == 0
-                && differingRows == 0
-                && parseErrors == 0;
+        return missingTables == 0 && missingColumns == 0 && missingRows == 0 && mismatchedRows == 0 && parseErrors == 0;
     }
 }

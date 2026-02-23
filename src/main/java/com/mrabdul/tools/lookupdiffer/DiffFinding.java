@@ -1,16 +1,17 @@
 package com.mrabdul.tools.lookupdiffer;
 
 public class DiffFinding {
-    public String kind;    // TABLE_MISSING, COLUMN_MISSING, ROW_MISSING, ROW_DIFFERENT, WARN_NO_PK, PARSE_ERROR
+    // TABLE_MISSING, COLUMN_MISSING, ROW_MISSING, ROW_MISMATCH, PARSE_ERROR, WARN_NO_PK
+    public String kind;
     public String table;
     public String file;
     public int line;
 
     public String message;
 
-    // payloads
-    public String ddl;       // e.g. ALTER/UPDATE
-    public String insertSql; // missing row insert
+    // Optional payloads
+    public String ddl;        // e.g. ALTER TABLE...
+    public String insertSql;  // e.g. INSERT INTO... or UPDATE...
 
     public DiffFinding() {}
 

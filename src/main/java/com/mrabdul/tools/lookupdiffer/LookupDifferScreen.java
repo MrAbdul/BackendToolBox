@@ -98,7 +98,7 @@ public class LookupDifferScreen implements ToolScreen {
                                 statusBar.setWarn("Diff complete: tables=" + res.getMissingTables()
                                         + " cols=" + res.getMissingColumns()
                                         + " inserts=" + res.getMissingRows()
-                                        + " updates=" + res.getDifferingRows());
+                                        + " updates=" + res.getMismatchedRows());
                             }
                         } catch (Exception e) {
                             if (outputBox != null) outputBox.setText("Diff failed:\n" + e.toString());

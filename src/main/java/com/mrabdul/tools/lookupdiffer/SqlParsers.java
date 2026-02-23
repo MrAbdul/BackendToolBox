@@ -6,12 +6,29 @@ import java.util.List;
 public final class SqlParsers {
     private SqlParsers() {}
 
+    /** Normalize identifier token: trim + collapse spaces + optionally upper-case later in engine */
     public static String normToken(String s) {
         if (s == null) return "";
         return s.trim().replaceAll("\\s+", " ");
     }
 
-    /** Split by commas at top-level, respecting quotes and parentheses depth */
+    /** Extracts clean table/column name, stripping schema prefixes and quotes.
+     * E.g. "BBYNIB"."LOOKUP_PRODUCT_CLASS_NAMES" -> LOOKUP_PRODUCT_CLASS_NAMES
+     */
+    public static String cleanIdentifier(String raw) {
+        if (raw == null) return "";
+        String t = raw.trim();
+        int dot = t.lastIndexOf('.');
+        if (dot >= 0) {
+            t = t.substring(dot + 1).trim();
+        }
+        if (t.startsWith("\"") && t.endsWith("\"") && t.length() >= 2) {
+            t = t.substring(1, t.length() - 1);
+        }
+        return t;
+    }
+
+    /** Split by commas, respecting quotes and parentheses depth (for VALUES lists, column lists, etc.) */
     public static List<String> splitTopLevelComma(String raw) {
         List<String> out = new ArrayList<String>();
         if (raw == null) return out;
@@ -27,6 +44,7 @@ public final class SqlParsers {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
 
+            // handle quote toggle
             if (c == '\'' && !inDouble) {
                 inSingle = !inSingle;
                 cur.append(c);
@@ -48,7 +66,6 @@ public final class SqlParsers {
                     continue;
                 }
             }
-
             cur.append(c);
         }
 
@@ -58,7 +75,7 @@ public final class SqlParsers {
         return out;
     }
 
-    /** Returns substring inside first balanced (...) after the first '(' */
+    /** Find substring between first occurrence of openChar and its matching closeChar. Returns null if not found. */
     public static String firstBalanced(String s, char openChar, char closeChar) {
         if (s == null) return null;
         int start = s.indexOf(openChar);
@@ -89,7 +106,7 @@ public final class SqlParsers {
         return null;
     }
 
-    public static String flattenSql(String s) {
+    public static String flattenSqlLine(String s) {
         if (s == null) return "";
         return s.replaceAll("[\\r\\n]+", " ").replaceAll("\\s+", " ").trim();
     }

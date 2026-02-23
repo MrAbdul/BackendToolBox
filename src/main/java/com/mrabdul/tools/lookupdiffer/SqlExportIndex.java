@@ -4,23 +4,17 @@ import java.util.*;
 
 public class SqlExportIndex {
 
-    // Table DDL (for columns diff)
+    // tableKey -> ddl info
     public final Map<String, TableDdl> ddlsByTableKey = new LinkedHashMap<String, TableDdl>();
 
-    // PK columns per table (from *_PK.sql)
-    public final Map<String, List<String>> pkColumnsByTableKey = new LinkedHashMap<String, List<String>>();
+    // tableKey -> inserts
+    public final Map<String, List<InsertRow>> rowsByTableKey = new LinkedHashMap<String, List<InsertRow>>();
 
-    // Rows parsed from INSERTs per table (we first store as list, then build pk-keyed maps)
-    public final Map<String, List<Row>> rowsListByTableKey = new LinkedHashMap<String, List<Row>>();
-
-    // Rows keyed by pk tuple per table (filled after indexing when PK known)
-    public final Map<String, Map<String, Row>> rowsByPkKeyByTableKey = new LinkedHashMap<String, Map<String, Row>>();
-
-    // Parse errors (best effort)
-    public final List<DiffFinding> parseErrors = new ArrayList<DiffFinding>();
+    // tableKey -> list of primary key columns
+    public final Map<String, List<String>> pksByTableKey = new LinkedHashMap<String, List<String>>();
 
     public static class TableDdl {
-        public final String tableName; // as found (may include schema/quotes trimmed)
+        public final String tableName;
         public final String file;
         public final int line;
         public final Map<String, ColumnDef> columnsByKey;
@@ -34,8 +28,8 @@ public class SqlExportIndex {
     }
 
     public static class ColumnDef {
-        public final String columnName;      // as found
-        public final String columnSqlDef;    // entire column definition (no trailing comma)
+        public final String columnName;
+        public final String columnSqlDef;
         public final int line;
 
         public ColumnDef(String columnName, String columnSqlDef, int line) {
@@ -45,23 +39,41 @@ public class SqlExportIndex {
         }
     }
 
-    public static class Row {
+    public static class InsertRow {
         public final String tableName;
         public final String file;
         public final int line;
 
-        // columnKey -> value (SQL literal/expression, normalized)
-        public final Map<String, String> colToVal;
+        public final List<String> columns;
+        public final List<String> values;
+        public final String normalizedKey;
+        public final String originalSql;
 
-        // store original insert for generating INSERT patch
-        public final String originalInsertSql;
-
-        public Row(String tableName, String file, int line, Map<String, String> colToVal, String originalInsertSql) {
+        public InsertRow(String tableName, String file, int line, List<String> columns, List<String> values, String normalizedKey, String originalSql) {
             this.tableName = tableName;
             this.file = file;
             this.line = line;
-            this.colToVal = colToVal;
-            this.originalInsertSql = originalInsertSql;
+            this.columns = columns;
+            this.values = values;
+            this.normalizedKey = normalizedKey;
+            this.originalSql = originalSql;
+        }
+
+        public String getPkKey(List<String> pkCols, boolean caseInsensitive) {
+            StringBuilder sb = new StringBuilder();
+            for (String pkCol : pkCols) {
+                String search = caseInsensitive ? pkCol.toUpperCase() : pkCol;
+                int idx = -1;
+                for (int i = 0; i < columns.size(); i++) {
+                    String colCmp = caseInsensitive ? columns.get(i).toUpperCase() : columns.get(i);
+                    if (colCmp.equals(search)) {
+                        idx = i;
+                        break;
+                    }
+                }
+                sb.append(idx >= 0 ? values.get(idx) : "NULL").append("|");
+            }
+            return sb.toString();
         }
     }
 }
