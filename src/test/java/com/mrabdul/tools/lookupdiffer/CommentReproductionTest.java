@@ -41,6 +41,7 @@ class CommentReproductionTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 
@@ -74,6 +75,7 @@ class CommentReproductionTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 
@@ -113,6 +115,7 @@ class CommentReproductionTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 
@@ -145,6 +148,7 @@ class CommentReproductionTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 
@@ -187,6 +191,7 @@ class CommentReproductionTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 

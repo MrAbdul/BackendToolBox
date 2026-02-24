@@ -9,19 +9,22 @@ public class LookupDifferRequest {
 
     private final String outDir;   // optional
     private final String jsonOut;  // optional
+    private final String htmlOut;  // optional
 
     public LookupDifferRequest(String sourceDir,
                                String targetDir,
                                boolean caseInsensitive,
                                String tableNameContains,
                                String outDir,
-                               String jsonOut) {
+                               String jsonOut,
+                               String htmlOut) {
         this.sourceDir = sourceDir;
         this.targetDir = targetDir;
         this.caseInsensitive = caseInsensitive;
         this.tableNameContains = tableNameContains;
         this.outDir = outDir;
         this.jsonOut = jsonOut;
+        this.htmlOut = htmlOut;
     }
 
     public String getSourceDir() { return sourceDir; }
@@ -30,4 +33,5 @@ public class LookupDifferRequest {
     public String getTableNameContains() { return tableNameContains; }
     public String getOutDir() { return outDir; }
     public String getJsonOut() { return jsonOut; }
+    public String getHtmlOut() { return htmlOut; }
 }

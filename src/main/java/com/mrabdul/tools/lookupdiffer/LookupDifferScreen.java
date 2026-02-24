@@ -31,12 +31,14 @@ public class LookupDifferScreen implements ToolScreen {
         final AutoCompleteTextBox targetDir = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
         final AutoCompleteTextBox outDir = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
         final AutoCompleteTextBox jsonOut = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
+        final AutoCompleteTextBox htmlOut = new AutoCompleteTextBox(UiSizes.INPUT_WIDE, 1);
 
         String base = new File(".").getAbsoluteFile().getParent();
         sourceDir.setText(base);
         targetDir.setText(base);
         outDir.setText("");
         jsonOut.setText("");
+        htmlOut.setText("");
 
         final TextBox tableContains = new TextBox(UiSizes.inputMed());
         tableContains.setText("");
@@ -49,6 +51,7 @@ public class LookupDifferScreen implements ToolScreen {
         row(form, "Target dir (UAT export):", targetDir);
         row(form, "Out dir (optional):", outDir);
         row(form, "JSON out (optional):", jsonOut);
+        row(form, "HTML report (optional):", htmlOut);
         row(form, "Table contains filter:", tableContains);
         span2(form, caseInsensitive);
 
@@ -78,7 +81,8 @@ public class LookupDifferScreen implements ToolScreen {
                         caseInsensitive.isChecked(),
                         safe(tableContains.getText()).isEmpty() ? null : safe(tableContains.getText()),
                         safe(outDir.getText()).isEmpty() ? null : safe(outDir.getText()),
-                        safe(jsonOut.getText()).isEmpty() ? null : safe(jsonOut.getText())
+                        safe(jsonOut.getText()).isEmpty() ? null : safe(jsonOut.getText()),
+                        safe(htmlOut.getText()).isEmpty() ? null : safe(htmlOut.getText())
                 );
 
                 if (runningTask != null) runningTask.cancel(true);
@@ -90,7 +94,13 @@ public class LookupDifferScreen implements ToolScreen {
                     @Override public void run() {
                         try {
                             LookupDifferResult res = service.run(req);
-                            if (outputBox != null) outputBox.setText(res.getReportText());
+                            if (outputBox != null) {
+                                String text = res.getReportText();
+                                if (res.getHtmlReportPath() != null) {
+                                    text += "\nHTML report generated: " + res.getHtmlReportPath();
+                                }
+                                outputBox.setText(text);
+                            }
 
                             if (res.isOk()) {
                                 statusBar.setInfo("Diff complete: OK (no diffs).");

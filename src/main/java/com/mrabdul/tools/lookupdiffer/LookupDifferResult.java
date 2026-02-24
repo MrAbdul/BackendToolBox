@@ -14,6 +14,7 @@ public class LookupDifferResult {
     private final long parseErrors;
 
     private final String reportText;
+    private final String htmlReportPath;
 
     public LookupDifferResult(List<DiffFinding> findings,
                               long missingTables,
@@ -23,7 +24,8 @@ public class LookupDifferResult {
                               long missingPks,
                               long warnings,
                               long parseErrors,
-                              String reportText) {
+                              String reportText,
+                              String htmlReportPath) {
         this.findings = findings;
         this.missingTables = missingTables;
         this.missingColumns = missingColumns;
@@ -33,6 +35,7 @@ public class LookupDifferResult {
         this.warnings = warnings;
         this.parseErrors = parseErrors;
         this.reportText = reportText;
+        this.htmlReportPath = htmlReportPath;
     }
 
     public List<DiffFinding> getFindings() { return findings; }
@@ -44,6 +47,7 @@ public class LookupDifferResult {
     public long getWarnings() { return warnings; }
     public long getParseErrors() { return parseErrors; }
     public String getReportText() { return reportText; }
+    public String getHtmlReportPath() { return htmlReportPath; }
 
     public boolean isOk() {
         return missingTables == 0 && missingColumns == 0 && missingRows == 0 && mismatchedRows == 0 && missingPks == 0 && parseErrors == 0;

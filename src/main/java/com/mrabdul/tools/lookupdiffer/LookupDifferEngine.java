@@ -170,6 +170,15 @@ public class LookupDifferEngine {
         long parseErrors = findings.stream().filter(x -> "PARSE_ERROR".equals(x.kind)).count();
 
         String report = buildReport(findings, missingTables, missingColumns, missingPks, missingRows, mismatchedRows, warnings, parseErrors);
+        String htmlReportPath = null;
+
+        if (req.getHtmlOut() != null && !req.getHtmlOut().trim().isEmpty()) {
+            Path htmlPath = Paths.get(req.getHtmlOut().trim()).toAbsolutePath().normalize();
+            if (htmlPath.getParent() != null) Files.createDirectories(htmlPath.getParent());
+            String html = buildHtmlReport(findings, missingTables, missingColumns, missingPks, missingRows, mismatchedRows, warnings, parseErrors);
+            Files.write(htmlPath, html.getBytes(Charset.forName("UTF-8")));
+            htmlReportPath = htmlPath.toString();
+        }
 
         if (req.getOutDir() != null && !req.getOutDir().trim().isEmpty()) {
             Path out = Paths.get(req.getOutDir().trim()).toAbsolutePath().normalize();
@@ -221,8 +230,8 @@ public class LookupDifferEngine {
             om.writeValue(jsonOut.toFile(), findings);
         }
 
-        // Now correctly passes all 7 longs!
-        return new LookupDifferResult(findings, missingTables, missingColumns, missingRows, mismatchedRows, missingPks, warnings, parseErrors, report);
+        // Now correctly passes all 10 arguments!
+        return new LookupDifferResult(findings, missingTables, missingColumns, missingRows, mismatchedRows, missingPks, warnings, parseErrors, report, htmlReportPath);
     }
 
     private String colKeyFile(SqlExportIndex.TableDdl ddl, SqlExportIndex.ColumnDef col) {
@@ -377,6 +386,99 @@ public class LookupDifferEngine {
             }
         }
 
+        return sb.toString();
+    }
+
+    private String buildHtmlReport(List<DiffFinding> findings, long missingTables, long missingColumns, long missingPks, long missingRows, long mismatchedRows, long warnings, long parseErrors) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html>\n<html>\n<head>\n");
+        sb.append("<meta charset=\"UTF-8\">\n");
+        sb.append("<title>LookupDiffer Report</title>\n");
+        sb.append("<style>\n");
+        sb.append("body { font-family: sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }\n");
+        sb.append("h1, h2 { color: #2c3e50; }\n");
+        sb.append(".summary { display: flex; gap: 20px; margin-bottom: 30px; }\n");
+        sb.append(".card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; text-align: center; }\n");
+        sb.append(".card h3 { margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; }\n");
+        sb.append(".card p { margin: 10px 0 0; font-size: 24px; font-weight: bold; color: #2980b9; }\n");
+        sb.append(".card.error p { color: #e74c3c; }\n");
+        sb.append(".card.warning p { color: #f39c12; }\n");
+        sb.append("table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n");
+        sb.append("th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }\n");
+        sb.append("th { background-color: #ecf0f1; color: #2c3e50; font-weight: bold; }\n");
+        sb.append("tr:hover { background-color: #f9f9f9; }\n");
+        sb.append(".kind { font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 12px; }\n");
+        sb.append(".kind-TABLE_MISSING { background: #e8f4fd; color: #2980b9; }\n");
+        sb.append(".kind-COLUMN_MISSING { background: #fef9e7; color: #f39c12; }\n");
+        sb.append(".kind-ROW_MISSING { background: #e9f7ef; color: #27ae60; }\n");
+        sb.append(".kind-ROW_MISMATCH { background: #fdf2f2; color: #e74c3c; }\n");
+        sb.append(".kind-PK_MISSING { background: #f4ecf7; color: #8e44ad; }\n");
+        sb.append(".kind-PARSE_ERROR { background: #fdedec; color: #c0392b; }\n");
+        sb.append(".kind-WARN_NO_PK { background: #fff5e6; color: #d35400; }\n");
+        sb.append("pre { background: #2c3e50; color: #ecf0f1; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 13px; margin: 5px 0; white-space: pre-wrap; word-break: break-all; }\n");
+        sb.append("input[type=\"text\"] { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }\n");
+        sb.append("</style>\n");
+        sb.append("</head>\n<body>\n");
+        sb.append("<h1>LookupDiffer Report</h1>\n");
+
+        sb.append("<div class=\"summary\">\n");
+        sb.append("<div class=\"card\"><h3>Missing Tables</h3><p>").append(missingTables).append("</p></div>\n");
+        sb.append("<div class=\"card\"><h3>Missing Columns</h3><p>").append(missingColumns).append("</p></div>\n");
+        sb.append("<div class=\"card\"><h3>Missing PKs</h3><p>").append(missingPks).append("</p></div>\n");
+        sb.append("<div class=\"card\"><h3>Missing Rows</h3><p>").append(missingRows).append("</p></div>\n");
+        sb.append("<div class=\"card\"><h3>Mismatched Rows</h3><p>").append(mismatchedRows).append("</p></div>\n");
+        sb.append("<div class=\"card warning\"><h3>Warnings</h3><p>").append(warnings).append("</p></div>\n");
+        sb.append("<div class=\"card error\"><h3>Parse Errors</h3><p>").append(parseErrors).append("</p></div>\n");
+        sb.append("</div>\n");
+
+        sb.append("<h2>Findings</h2>\n");
+        sb.append("<input type=\"text\" id=\"filter\" placeholder=\"Filter by table or message...\" onkeyup=\"filterTable()\">\n");
+        sb.append("<table id=\"findingsTable\">\n");
+        sb.append("<thead><tr><th>Kind</th><th>Table</th><th>File:Line</th><th>Message</th></tr></thead>\n");
+        sb.append("<tbody>\n");
+        for (DiffFinding f : findings) {
+            sb.append("<tr>\n");
+            sb.append("<td><span class=\"kind kind-").append(f.kind).append("\">").append(f.kind).append("</span></td>\n");
+            sb.append("<td>").append(f.table).append("</td>\n");
+            sb.append("<td>").append(f.file).append(":").append(f.line).append("</td>\n");
+            sb.append("<td>").append(f.message);
+            if (f.ddl != null && !f.ddl.isEmpty()) {
+                sb.append("<pre>").append(f.ddl.replace("<", "&lt;").replace(">", "&gt;")).append("</pre>");
+            }
+            if (f.insertSql != null && !f.insertSql.isEmpty()) {
+                sb.append("<pre>").append(f.insertSql.replace("<", "&lt;").replace(">", "&gt;")).append("</pre>");
+            }
+            sb.append("</td>\n");
+            sb.append("</tr>\n");
+        }
+        sb.append("</tbody>\n");
+        sb.append("</table>\n");
+
+        sb.append("<script>\n");
+        sb.append("function filterTable() {\n");
+        sb.append("  var input, filter, table, tr, td, i, j, txtValue, found;\n");
+        sb.append("  input = document.getElementById(\"filter\");\n");
+        sb.append("  filter = input.value.toUpperCase();\n");
+        sb.append("  table = document.getElementById(\"findingsTable\");\n");
+        sb.append("  tr = table.getElementsByTagName(\"tr\");\n");
+        sb.append("  for (i = 1; i < tr.length; i++) {\n");
+        sb.append("    found = false;\n");
+        sb.append("    td = tr[i].getElementsByTagName(\"td\");\n");
+        sb.append("    for (j = 0; j < td.length; j++) {\n");
+        sb.append("      if (td[j]) {\n");
+        sb.append("        txtValue = td[j].textContent || td[j].innerText;\n");
+        sb.append("        if (txtValue.toUpperCase().indexOf(filter) > -1) {\n");
+        sb.append("          found = true;\n");
+        sb.append("          break;\n");
+        sb.append("        }\n");
+        sb.append("      }\n");
+        sb.append("    }\n");
+        sb.append("    tr[i].style.display = found ? \"\" : \"none\";\n");
+        sb.append("  }\n");
+        sb.append("}\n");
+        sb.append("</script>\n");
+
+        sb.append("</body>\n</html>");
         return sb.toString();
     }
 

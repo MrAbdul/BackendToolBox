@@ -38,6 +38,7 @@ public class LookupDifferCliCommand implements CliCommand {
         String targetDir = CliArgs.get(a, "targetDir", "");
         String outDir = CliArgs.get(a, "outDir", "");
         String jsonOut = CliArgs.get(a, "jsonOut", "");
+        String htmlOut = CliArgs.get(a, "htmlOut", "");
         String tableContains = CliArgs.get(a, "tableContains", "");
 
         boolean caseInsensitive = CliArgs.getBool(a, "caseInsensitive", true);
@@ -55,11 +56,16 @@ public class LookupDifferCliCommand implements CliCommand {
                 caseInsensitive,
                 tableContains.trim().isEmpty() ? null : tableContains.trim(),
                 outDir.trim().isEmpty() ? null : outDir.trim(),
-                jsonOut.trim().isEmpty() ? null : jsonOut.trim()
+                jsonOut.trim().isEmpty() ? null : jsonOut.trim(),
+                htmlOut.trim().isEmpty() ? null : htmlOut.trim()
         );
 
         LookupDifferResult res = service.run(req);
         System.out.println(res.getReportText());
+
+        if (res.getHtmlReportPath() != null) {
+            System.out.println("HTML report generated: " + res.getHtmlReportPath());
+        }
 
         return res.isOk() ? 0 : 1;
     }
@@ -93,6 +99,7 @@ public class LookupDifferCliCommand implements CliCommand {
         System.out.println("  --outDir <path>           Writes: schema_patch.sql, insert_patch.sql, update_patch.sql, missing_tables.sql,");
         System.out.println("                            created_tables.txt, and {table}_insert.sql/{table}_update.sql files.");
         System.out.println("  --jsonOut <path>          Write findings list as JSON");
+        System.out.println("  --htmlOut <path>          Write results to a static HTML report (viewable in browser)");
         System.out.println("  --tableContains <text>    Only consider tables whose name contains this text");
         System.out.println("  --caseInsensitive <true|false>  Default: true");
         System.out.println("  --help, -h");

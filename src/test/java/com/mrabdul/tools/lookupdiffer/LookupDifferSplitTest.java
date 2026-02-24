@@ -48,6 +48,7 @@ class LookupDifferSplitTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 

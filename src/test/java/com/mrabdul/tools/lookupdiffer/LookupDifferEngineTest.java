@@ -38,6 +38,7 @@ class LookupDifferEngineTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 
@@ -86,6 +87,7 @@ class LookupDifferEngineTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 
@@ -133,6 +135,7 @@ class LookupDifferEngineTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 
@@ -190,6 +193,7 @@ class LookupDifferEngineTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 
@@ -236,6 +240,7 @@ class LookupDifferEngineTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 
@@ -276,6 +281,7 @@ class LookupDifferEngineTest {
                 true,
                 null,
                 outDir.toString(),
+                null,
                 null
         );
 
