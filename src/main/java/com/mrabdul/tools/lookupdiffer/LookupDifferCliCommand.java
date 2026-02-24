@@ -99,7 +99,7 @@ public class LookupDifferCliCommand implements CliCommand {
         System.out.println("  --outDir <path>           Writes: schema_patch.sql, insert_patch.sql, update_patch.sql, missing_tables.sql,");
         System.out.println("                            created_tables.txt, and {table}_insert.sql/{table}_update.sql files.");
         System.out.println("  --jsonOut <path>          Write findings list as JSON");
-        System.out.println("  --htmlOut <path>          Write results to a static HTML report (viewable in browser)");
+        System.out.println("  --htmlOut <dir>           Write multi-page HTML report into this directory (index.html + per-table pages)");
         System.out.println("  --tableContains <text>    Only consider tables whose name contains this text");
         System.out.println("  --caseInsensitive <true|false>  Default: true");
         System.out.println("  --help, -h");

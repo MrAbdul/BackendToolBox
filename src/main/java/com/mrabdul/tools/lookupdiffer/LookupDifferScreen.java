@@ -51,7 +51,7 @@ public class LookupDifferScreen implements ToolScreen {
         row(form, "Target dir (UAT export):", targetDir);
         row(form, "Out dir (optional):", outDir);
         row(form, "JSON out (optional):", jsonOut);
-        row(form, "HTML report (optional):", htmlOut);
+        row(form, "HTML out dir (optional):", htmlOut);
         row(form, "Table contains filter:", tableContains);
         span2(form, caseInsensitive);
 

@@ -173,11 +173,10 @@ public class LookupDifferEngine {
         String htmlReportPath = null;
 
         if (req.getHtmlOut() != null && !req.getHtmlOut().trim().isEmpty()) {
-            Path htmlPath = Paths.get(req.getHtmlOut().trim()).toAbsolutePath().normalize();
-            if (htmlPath.getParent() != null) Files.createDirectories(htmlPath.getParent());
-            String html = buildHtmlReport(findings, missingTables, missingColumns, missingPks, missingRows, mismatchedRows, warnings, parseErrors);
-            Files.write(htmlPath, html.getBytes(Charset.forName("UTF-8")));
-            htmlReportPath = htmlPath.toString();
+            Path htmlDir = Paths.get(req.getHtmlOut().trim()).toAbsolutePath().normalize();
+            Files.createDirectories(htmlDir);
+            generateMultipageHtmlReport(htmlDir, findings, missingTables, missingColumns, missingPks, missingRows, mismatchedRows, warnings, parseErrors);
+            htmlReportPath = htmlDir.resolve("index.html").toString();
         }
 
         if (req.getOutDir() != null && !req.getOutDir().trim().isEmpty()) {
@@ -480,6 +479,180 @@ public class LookupDifferEngine {
 
         sb.append("</body>\n</html>");
         return sb.toString();
+    }
+
+    private void generateMultipageHtmlReport(Path outDir, List<DiffFinding> findings, long mt, long mc, long mp, long mr, long mm, long w, long pe) throws Exception {
+        Path assetsDir = outDir.resolve("assets");
+        Files.createDirectories(assetsDir);
+        Files.write(assetsDir.resolve("style.css"), getCss().getBytes(Charset.forName("UTF-8")));
+        Files.write(assetsDir.resolve("script.js"), getJs().getBytes(Charset.forName("UTF-8")));
+
+        Map<String, List<DiffFinding>> grouped = findings.stream()
+                .filter(f -> f.table != null && !f.table.isEmpty())
+                .collect(Collectors.groupingBy(f -> f.table.toUpperCase()));
+
+        String indexHtml = buildIndexHtml(grouped, mt, mc, mp, mr, mm, w, pe);
+        Files.write(outDir.resolve("index.html"), indexHtml.getBytes(Charset.forName("UTF-8")));
+
+        for (Map.Entry<String, List<DiffFinding>> entry : grouped.entrySet()) {
+            String tableName = entry.getKey();
+            String tableHtml = buildTableDetailHtml(tableName, entry.getValue());
+            Files.write(outDir.resolve("table_" + tableName.toLowerCase() + ".html"), tableHtml.getBytes(Charset.forName("UTF-8")));
+        }
+
+        List<DiffFinding> orphans = findings.stream()
+                .filter(f -> f.table == null || f.table.isEmpty())
+                .collect(Collectors.toList());
+        if (!orphans.isEmpty()) {
+            String orphanHtml = buildTableDetailHtml("OTHER", orphans);
+            Files.write(outDir.resolve("table_other.html"), orphanHtml.getBytes(Charset.forName("UTF-8")));
+        }
+    }
+
+    private String buildIndexHtml(Map<String, List<DiffFinding>> grouped, long mt, long mc, long mp, long mr, long mm, long w, long pe) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html>\n<html>\n<head>\n");
+        sb.append("<meta charset=\"UTF-8\">\n");
+        sb.append("<title>LookupDiffer Dashboard</title>\n");
+        sb.append("<link rel=\"stylesheet\" href=\"assets/style.css\">\n");
+        sb.append("</head>\n<body onload=\"initDashboard()\">\n");
+        sb.append("<div class=\"container\">\n");
+        sb.append("<h1>LookupDiffer Dashboard</h1>\n");
+        sb.append("<div class=\"summary\">\n");
+        sb.append("<div class=\"card\" id=\"card-mt\"><h3>Missing Tables</h3><p>").append(mt).append("</p></div>\n");
+        sb.append("<div class=\"card\" id=\"card-mc\"><h3>Missing Columns</h3><p>").append(mc).append("</p></div>\n");
+        sb.append("<div class=\"card\" id=\"card-mp\"><h3>Missing PKs</h3><p>").append(mp).append("</p></div>\n");
+        sb.append("<div class=\"card\" id=\"card-mr\"><h3>Missing Rows</h3><p>").append(mr).append("</p></div>\n");
+        sb.append("<div class=\"card\" id=\"card-mm\"><h3>Mismatched Rows</h3><p>").append(mm).append("</p></div>\n");
+        sb.append("<div class=\"card warning\" id=\"card-w\"><h3>Warnings</h3><p>").append(w).append("</p></div>\n");
+        sb.append("<div class=\"card error\" id=\"card-pe\"><h3>Parse Errors</h3><p>").append(pe).append("</p></div>\n");
+        sb.append("</div>\n");
+        sb.append("<div class=\"actions\">\n");
+        sb.append("<input type=\"text\" id=\"tableSearch\" placeholder=\"Search tables...\" onkeyup=\"filterTables()\">\n");
+        sb.append("<button onclick=\"toggleAll(true)\">Select All</button>\n");
+        sb.append("<button onclick=\"toggleAll(false)\">Deselect All</button>\n");
+        sb.append("</div>\n");
+        sb.append("<table id=\"tableList\">\n");
+        sb.append("<thead><tr><th><input type=\"checkbox\" id=\"checkAll\" onclick=\"toggleAll(this.checked)\" checked></th><th>Table</th><th>Findings</th><th>Details</th></tr></thead>\n");
+        sb.append("<tbody>\n");
+        List<String> tableNames = new ArrayList<>(grouped.keySet());
+        Collections.sort(tableNames);
+        for (String tableName : tableNames) {
+            List<DiffFinding> tableFindings = grouped.get(tableName);
+            long count = tableFindings.size();
+            long l_mt = tableFindings.stream().filter(f -> "TABLE_MISSING".equals(f.kind)).count();
+            long l_mc = tableFindings.stream().filter(f -> "COLUMN_MISSING".equals(f.kind)).count();
+            long l_mp = tableFindings.stream().filter(f -> "PK_MISSING".equals(f.kind)).count();
+            long l_mr = tableFindings.stream().filter(f -> "ROW_MISSING".equals(f.kind)).count();
+            long l_mm = tableFindings.stream().filter(f -> "ROW_MISMATCH".equals(f.kind)).count();
+            long l_w  = tableFindings.stream().filter(f -> "WARN_NO_PK".equals(f.kind)).count();
+            long l_pe = tableFindings.stream().filter(f -> "PARSE_ERROR".equals(f.kind)).count();
+            sb.append("<tr data-table=\"").append(tableName).append("\" ")
+              .append("data-mt=\"").append(l_mt).append("\" ")
+              .append("data-mc=\"").append(l_mc).append("\" ")
+              .append("data-mp=\"").append(l_mp).append("\" ")
+              .append("data-mr=\"").append(l_mr).append("\" ")
+              .append("data-mm=\"").append(l_mm).append("\" ")
+              .append("data-w=\"").append(l_w).append("\" ")
+              .append("data-pe=\"").append(l_pe).append("\">\n");
+            sb.append("<td><input type=\"checkbox\" class=\"table-check\" checked onclick=\"updateSummary()\"></td>\n");
+            sb.append("<td>").append(tableName).append("</td>\n");
+            sb.append("<td>").append(count).append("</td>\n");
+            sb.append("<td><a href=\"table_").append(tableName.toLowerCase()).append(".html\">View Details</a></td>\n");
+            sb.append("</tr>\n");
+        }
+        sb.append("</tbody>\n</table>\n</div>\n<script src=\"assets/script.js\"></script>\n</body>\n</html>");
+        return sb.toString();
+    }
+
+    private String buildTableDetailHtml(String tableName, List<DiffFinding> findings) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n");
+        sb.append("<title>Findings for ").append(tableName).append("</title>\n");
+        sb.append("<link rel=\"stylesheet\" href=\"assets/style.css\">\n");
+        sb.append("</head>\n<body>\n<div class=\"container\">\n");
+        sb.append("<nav><a href=\"index.html\">&larr; Back to Dashboard</a></nav>\n");
+        sb.append("<h1>Table: ").append(tableName).append("</h1>\n");
+        Map<String, List<DiffFinding>> byKind = findings.stream().collect(Collectors.groupingBy(f -> f.kind));
+        for (Map.Entry<String, List<DiffFinding>> entry : byKind.entrySet()) {
+            String kind = entry.getKey();
+            List<DiffFinding> list = entry.getValue();
+            sb.append("<h2 class=\"kind-header\">").append(kind).append(" (").append(list.size()).append(")</h2>\n");
+            sb.append("<table>\n<thead><tr><th>File:Line</th><th>Message</th></tr></thead>\n<tbody>\n");
+            for (DiffFinding f : list) {
+                sb.append("<tr><td>").append(f.file).append(":").append(f.line).append("</td>\n");
+                sb.append("<td>").append(f.message);
+                if (f.ddl != null && !f.ddl.isEmpty()) sb.append("<pre>").append(f.ddl.replace("<", "&lt;").replace(">", "&gt;")).append("</pre>");
+                if (f.insertSql != null && !f.insertSql.isEmpty()) sb.append("<pre>").append(f.insertSql.replace("<", "&lt;").replace(">", "&gt;")).append("</pre>");
+                sb.append("</td></tr>\n");
+            }
+            sb.append("</tbody>\n</table>\n");
+        }
+        sb.append("</div>\n</body>\n</html>");
+        return sb.toString();
+    }
+
+    private String getCss() {
+        return "body { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: #f8f9fa; color: #333; }\n" +
+               ".container { max-width: 1200px; margin: 0 auto; padding: 20px; }\n" +
+               "h1 { color: #212529; border-bottom: 2px solid #dee2e6; padding-bottom: 10px; }\n" +
+               "h2 { color: #495057; margin-top: 30px; }\n" +
+               ".summary { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 30px; }\n" +
+               ".card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex: 1; min-width: 150px; text-align: center; border-top: 4px solid #007bff; }\n" +
+               ".card h3 { margin: 0; font-size: 13px; color: #6c757d; text-transform: uppercase; letter-spacing: 1px; }\n" +
+               ".card p { margin: 10px 0 0; font-size: 28px; font-weight: bold; color: #212529; }\n" +
+               ".card.warning { border-top-color: #ffc107; }\n" +
+               ".card.error { border-top-color: #dc3545; }\n" +
+               ".actions { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }\n" +
+               "#tableSearch { padding: 10px; border: 1px solid #ced4da; border-radius: 5px; flex-grow: 1; }\n" +
+               "button { padding: 10px 15px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; }\n" +
+               "button:hover { background: #5a6268; }\n" +
+               "table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }\n" +
+               "th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #f1f3f5; }\n" +
+               "th { background-color: #f1f3f5; color: #495057; font-weight: 600; }\n" +
+               "tr:hover { background-color: #f8f9fa; }\n" +
+               "a { color: #007bff; text-decoration: none; }\n" +
+               "a:hover { text-decoration: underline; }\n" +
+               "pre { background: #212529; color: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 13px; margin-top: 10px; white-space: pre-wrap; word-break: break-all; }\n" +
+               "nav { margin-bottom: 20px; }\n" +
+               ".kind-header { background: #e9ecef; padding: 10px 15px; border-radius: 5px; font-size: 18px; margin-top: 20px; }\n";
+    }
+
+    private String getJs() {
+        return "function initDashboard() { loadState(); updateSummary(); }\n" +
+               "function updateSummary() {\n" +
+               "  let mt=0, mc=0, mp=0, mr=0, mm=0, w=0, pe=0;\n" +
+               "  document.querySelectorAll('#tableList tbody tr').forEach(row => {\n" +
+               "    if (row.querySelector('.table-check').checked) {\n" +
+               "      mt += parseInt(row.dataset.mt||0); mc += parseInt(row.dataset.mc||0); mp += parseInt(row.dataset.mp||0);\n" +
+               "      mr += parseInt(row.dataset.mr||0); mm += parseInt(row.dataset.mm||0); w += parseInt(row.dataset.w||0); pe += parseInt(row.dataset.pe||0);\n" +
+               "    }\n" +
+               "  });\n" +
+               "  document.querySelector('#card-mt p').innerText = mt; document.querySelector('#card-mc p').innerText = mc;\n" +
+               "  document.querySelector('#card-mp p').innerText = mp; document.querySelector('#card-mr p').innerText = mr;\n" +
+               "  document.querySelector('#card-mm p').innerText = mm; document.querySelector('#card-w p').innerText = w; document.querySelector('#card-pe p').innerText = pe;\n" +
+               "  saveState();\n" +
+               "}\n" +
+               "function filterTables() {\n" +
+               "  let f = document.getElementById('tableSearch').value.toUpperCase();\n" +
+               "  document.querySelectorAll('#tableList tbody tr').forEach(row => {\n" +
+               "    row.style.display = row.dataset.table.toUpperCase().indexOf(f) > -1 ? '' : 'none';\n" +
+               "  });\n" +
+               "}\n" +
+               "function toggleAll(checked) {\n" +
+               "  document.querySelectorAll('.table-check').forEach(cb => cb.checked = checked);\n" +
+               "  document.getElementById('checkAll').checked = checked; updateSummary();\n" +
+               "}\n" +
+               "function saveState() {\n" +
+               "  let excl = []; document.querySelectorAll('.table-check').forEach(cb => { if(!cb.checked) excl.push(cb.closest('tr').dataset.table); });\n" +
+               "  localStorage.setItem('lookupDifferExcluded', JSON.stringify(excl));\n" +
+               "}\n" +
+               "function loadState() {\n" +
+               "  let stored = localStorage.getItem('lookupDifferExcluded');\n" +
+               "  if (stored) {\n" +
+               "    let excl = JSON.parse(stored); document.querySelectorAll('.table-check').forEach(cb => { if(excl.includes(cb.closest('tr').dataset.table)) cb.checked = false; });\n" +
+               "  }\n" +
+               "}\n";
     }
 
     private SqlExportIndex indexDirectory(Path dir, LookupDifferRequest req) throws Exception {

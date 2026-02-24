@@ -9,7 +9,7 @@ public class LookupDifferRequest {
 
     private final String outDir;   // optional
     private final String jsonOut;  // optional
-    private final String htmlOut;  // optional
+    private final String htmlOut;  // optional output directory for multi-page HTML report
 
     public LookupDifferRequest(String sourceDir,
                                String targetDir,
