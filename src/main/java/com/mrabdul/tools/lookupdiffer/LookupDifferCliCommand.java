@@ -97,7 +97,7 @@ public class LookupDifferCliCommand implements CliCommand {
         System.out.println("  --help, -h");
         System.out.println();
         System.out.println("Notes:");
-        System.out.println("  - File encoding is hardcoded to windows-1251 (CP1251).");
+        System.out.println("  - File encoding is hardcoded to UTF-8 (as per guidelines).");
         System.out.println("  - UPDATEs are generated using PK columns parsed from *_PK.sql files.");
         System.out.println("  - v0.1 ignores constraints/PK for schema diff, but uses PK for UPDATE WHERE clause.");
         System.out.println();

@@ -18,6 +18,7 @@ public class SqlExportIndex {
         public final String file;
         public final int line;
         public final Map<String, ColumnDef> columnsByKey;
+        public String fullSql; // Store the original CREATE TABLE sql
 
         public TableDdl(String tableName, String file, int line, Map<String, ColumnDef> columnsByKey) {
             this.tableName = tableName;

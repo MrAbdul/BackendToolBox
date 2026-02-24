@@ -25,11 +25,33 @@ public class LookupDifferEngine {
         List<DiffFinding> findings = new ArrayList<DiffFinding>();
 
         // 1) tables missing
-        for (String tableKey : sourceIndex.ddlsByTableKey.keySet()) {
-            if (!targetIndex.ddlsByTableKey.containsKey(tableKey)) {
+        Set<String> allSourceTables = new LinkedHashSet<String>();
+        allSourceTables.addAll(sourceIndex.ddlsByTableKey.keySet());
+        allSourceTables.addAll(sourceIndex.rowsByTableKey.keySet());
+        allSourceTables.addAll(sourceIndex.pksByTableKey.keySet());
+
+        for (String tableKey : allSourceTables) {
+            if (!targetIndex.ddlsByTableKey.containsKey(tableKey) &&
+                !targetIndex.rowsByTableKey.containsKey(tableKey)) {
+                
                 SqlExportIndex.TableDdl ddl = sourceIndex.ddlsByTableKey.get(tableKey);
-                DiffFinding f = new DiffFinding("TABLE_MISSING", ddl.tableName, ddl.file, ddl.line,
+                String tName = ddl != null ? ddl.tableName : tableKey;
+                String fName = "";
+                int lNum = -1;
+                if (ddl != null) {
+                    fName = ddl.file;
+                    lNum = ddl.line;
+                } else if (sourceIndex.rowsByTableKey.containsKey(tableKey)) {
+                    List<SqlExportIndex.InsertRow> rows = sourceIndex.rowsByTableKey.get(tableKey);
+                    if (!rows.isEmpty()) {
+                        fName = rows.get(0).file;
+                        lNum = rows.get(0).line;
+                    }
+                }
+
+                DiffFinding f = new DiffFinding("TABLE_MISSING", tName, fName, lNum,
                         "Table exists in SOURCE but not in TARGET.");
+                if (ddl != null) f.ddl = ddl.fullSql;
                 findings.add(f);
             }
         }
@@ -140,7 +162,8 @@ public class LookupDifferEngine {
 
             writeSql(out.resolve("missing_tables.sql"), buildMissingTablesSql(findings));
             writeSql(out.resolve("schema_patch.sql"), buildSchemaPatchSql(alterStatements));
-            writeSql(out.resolve("data_patch.sql"), buildDataPatchSql(insertStatements, updateStatements));
+            writeSql(out.resolve("insert_patch.sql"), buildInsertPatchSql(findings));
+            writeSql(out.resolve("update_patch.sql"), buildUpdatePatchSql(findings));
         }
 
         if (req.getJsonOut() != null && !req.getJsonOut().trim().isEmpty()) {
@@ -167,7 +190,11 @@ public class LookupDifferEngine {
         sb.append("-- Tables present in SOURCE but missing in TARGET\n");
         for (DiffFinding f : findings) {
             if ("TABLE_MISSING".equals(f.kind)) {
-                sb.append("-- ").append(f.table).append("\n");
+                if (f.ddl != null) {
+                    sb.append(f.ddl).append("\n");
+                } else {
+                    sb.append("-- ").append(f.table).append("\n");
+                }
             }
         }
         return sb.toString();
@@ -182,18 +209,46 @@ public class LookupDifferEngine {
         return sb.toString();
     }
 
-    private String buildDataPatchSql(List<String> inserts, List<String> updates) {
+    private String buildInsertPatchSql(List<DiffFinding> findings) {
         StringBuilder sb = new StringBuilder();
         sb.append("-- Data patch: insert missing rows (SOURCE -> TARGET)\n");
-        for (String ins : inserts) {
-            sb.append(ins);
-            if (!ins.endsWith("\n")) sb.append("\n");
+
+        Set<String> missingTables = new HashSet<String>();
+        for (DiffFinding f : findings) {
+            if ("TABLE_MISSING".equals(f.kind)) missingTables.add(f.table.toUpperCase());
         }
-        if (!updates.isEmpty()) {
-            sb.append("\n-- Data patch: update mismatched rows (SOURCE -> TARGET)\n");
-            for (String upd : updates) {
-                sb.append(upd);
-                if (!upd.endsWith("\n")) sb.append("\n");
+
+        String lastTable = null;
+        for (DiffFinding f : findings) {
+            if ("ROW_MISSING".equals(f.kind) && f.insertSql != null) {
+                if (lastTable == null || !lastTable.equals(f.table)) {
+                    lastTable = f.table;
+                    sb.append("\n-- Table: ").append(f.table);
+                    if (missingTables.contains(f.table.toUpperCase())) {
+                        sb.append(" (MISSING IN TARGET)");
+                    }
+                    sb.append("\n");
+                }
+                sb.append(f.insertSql);
+                if (!f.insertSql.endsWith("\n")) sb.append("\n");
+            }
+        }
+        return sb.toString();
+    }
+
+    private String buildUpdatePatchSql(List<DiffFinding> findings) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("-- Data patch: update mismatched rows (SOURCE -> TARGET)\n");
+
+        String lastTable = null;
+        for (DiffFinding f : findings) {
+            if ("ROW_MISMATCH".equals(f.kind) && f.insertSql != null) {
+                if (lastTable == null || !lastTable.equals(f.table)) {
+                    lastTable = f.table;
+                    sb.append("\n-- Table: ").append(f.table).append("\n");
+                }
+                sb.append(f.insertSql);
+                if (!f.insertSql.endsWith("\n")) sb.append("\n");
             }
         }
         return sb.toString();
@@ -306,26 +361,89 @@ public class LookupDifferEngine {
             if (stmt.length() == 0) stmtStartLine = i + 1;
             stmt.append(line).append("\n");
 
-            if (trimmed.endsWith(";")) {
-                String sql = flattenSqlLine(stmt.toString());
+            String lineStripped = stripComments(line).trim();
+            if (lineStripped.endsWith(";")) {
+                processStmt(stmt.toString(), filePath, stmtStartLine, idx, ci, tableFilter);
                 stmt.setLength(0);
+            }
+        }
+        if (stmt.length() > 0) {
+            processStmt(stmt.toString(), filePath, stmtStartLine, idx, ci, tableFilter);
+        }
+    }
 
-                if (startsWithIgnoreCase(sql, "CREATE TABLE")) {
-                    parseCreateTable(sql, filePath, stmtStartLine, idx, ci, tableFilter);
-                    continue;
-                }
-                if (startsWithIgnoreCase(sql, "INSERT INTO")) {
-                    parseInsert(sql, filePath, stmtStartLine, idx, ci, tableFilter);
-                    continue;
-                }
-                if (startsWithIgnoreCase(sql, "CREATE UNIQUE INDEX")) {
-                    parseCreateIndex(sql, filePath, stmtStartLine, idx, ci, tableFilter);
-                    continue;
-                }
-                if (startsWithIgnoreCase(sql, "ALTER TABLE") && indexOfIgnoreCase(sql, "PRIMARY KEY") > 0) {
-                    parseAlterTablePk(sql, filePath, stmtStartLine, idx, ci, tableFilter);
-                    continue;
-                }
+    private void processStmt(String rawSql, String filePath, int stmtStartLine, SqlExportIndex idx, boolean ci, String tableFilter) {
+        List<String> statements = splitStatements(rawSql);
+        for (String raw : statements) {
+            String sql = flattenSqlLine(raw);
+            if (sql.isEmpty()) continue;
+
+            if (startsWithIgnoreCase(sql, "CREATE TABLE")) {
+                parseCreateTable(sql, filePath, stmtStartLine, idx, ci, tableFilter);
+            } else if (startsWithIgnoreCase(sql, "INSERT INTO")) {
+                parseInsert(sql, filePath, stmtStartLine, idx, ci, tableFilter);
+            } else if (startsWithIgnoreCase(sql, "CREATE UNIQUE INDEX")) {
+                parseCreateIndex(sql, filePath, stmtStartLine, idx, ci, tableFilter);
+            } else if (startsWithIgnoreCase(sql, "ALTER TABLE") && indexOfIgnoreCase(sql, "PRIMARY KEY") > 0) {
+                parseAlterTablePk(sql, filePath, stmtStartLine, idx, ci, tableFilter);
+            } else if (startsWithIgnoreCase(sql, "ALTER TABLE") && indexOfIgnoreCase(sql, " ADD ") > 0) {
+                parseAlterTableAdd(sql, filePath, stmtStartLine, idx, ci, tableFilter);
+            }
+        }
+    }
+
+    private void parseAlterTableAdd(String sql, String file, int line, SqlExportIndex idx, boolean ci, String tableFilter) {
+        String upper = ci ? sql.toUpperCase() : sql;
+        int alterIdx = upper.indexOf("ALTER TABLE");
+        int addIdx = upper.indexOf(" ADD ");
+        if (alterIdx < 0 || addIdx < 0 || addIdx < alterIdx) return;
+
+        String tableName = SqlParsers.cleanIdentifier(sql.substring(alterIdx + "ALTER TABLE".length(), addIdx));
+        if (tableFilter != null && !tableFilter.trim().isEmpty()) {
+            String tcmp = ci ? tableName.toLowerCase() : tableName;
+            String fcmp = ci ? tableFilter.trim().toLowerCase() : tableFilter.trim();
+            if (!tcmp.contains(fcmp)) return;
+        }
+
+        String afterAdd = sql.substring(addIdx + " ADD ".length()).trim();
+        // It could be ADD C1 NUMBER or ADD (C1 NUMBER, C2 VARCHAR2)
+        String colsRaw;
+        if (afterAdd.startsWith("(")) {
+            colsRaw = firstBalanced(afterAdd, '(', ')');
+        } else {
+            // Single column, but might have other things after it like constraints or just the end of statement
+            colsRaw = afterAdd;
+            if (colsRaw.endsWith(";")) colsRaw = colsRaw.substring(0, colsRaw.length() - 1);
+        }
+
+        if (colsRaw == null) return;
+
+        List<String> colLines = splitTopLevelComma(colsRaw);
+        String tableKey = ci ? tableName.toUpperCase() : tableName;
+
+        // We need the TableDdl to add columns to. If it doesn't exist, we might want to create a stub?
+        // Actually, if we saw an ALTER TABLE but no CREATE TABLE, we still want to know the columns.
+        SqlExportIndex.TableDdl ddl = idx.ddlsByTableKey.get(tableKey);
+        if (ddl == null) {
+            ddl = new SqlExportIndex.TableDdl(tableName, file, line, new LinkedHashMap<String, SqlExportIndex.ColumnDef>());
+            idx.ddlsByTableKey.put(tableKey, ddl);
+        }
+
+        for (String c : colLines) {
+            String colDef = c.trim();
+            if (colDef.isEmpty()) continue;
+
+            String cUp = ci ? colDef.toUpperCase() : colDef;
+            if (cUp.startsWith("CONSTRAINT") || cUp.startsWith("PRIMARY KEY") || cUp.startsWith("UNIQUE") || cUp.startsWith("FOREIGN KEY")) {
+                continue;
+            }
+
+            String colName = SqlParsers.cleanIdentifier(firstToken(colDef));
+            if (colName.isEmpty()) continue;
+
+            String colKey = ci ? colName.toUpperCase() : colName;
+            if (!ddl.columnsByKey.containsKey(colKey)) {
+                ddl.columnsByKey.put(colKey, new SqlExportIndex.ColumnDef(colName, colDef, line));
             }
         }
     }
@@ -363,7 +481,7 @@ public class LookupDifferEngine {
                 continue;
             }
 
-            String colName = firstToken(colDef);
+            String colName = SqlParsers.cleanIdentifier(firstToken(colDef));
             if (colName.isEmpty()) continue;
 
             String colKey = ci ? colName.toUpperCase() : colName;
@@ -371,8 +489,33 @@ public class LookupDifferEngine {
         }
 
         String tableKey = ci ? tableName.toUpperCase() : tableName;
-        if (!idx.ddlsByTableKey.containsKey(tableKey)) {
-            idx.ddlsByTableKey.put(tableKey, new SqlExportIndex.TableDdl(tableName, file, line, colsByKey));
+        SqlExportIndex.TableDdl ddl = idx.ddlsByTableKey.get(tableKey);
+        if (ddl == null) {
+            ddl = new SqlExportIndex.TableDdl(tableName, file, line, colsByKey);
+            ddl.fullSql = sql.endsWith(";") ? sql : (sql + ";");
+            idx.ddlsByTableKey.put(tableKey, ddl);
+        } else {
+            // Merge with existing stub or another DDL
+            if (ddl.fullSql == null) {
+                // It was a stub. Create a new one to properly set file/line/fullSql if desired,
+                // or just update fullSql. Since TableDdl fields are final, we replace it.
+                SqlExportIndex.TableDdl newDdl = new SqlExportIndex.TableDdl(tableName, file, line, colsByKey);
+                newDdl.fullSql = sql.endsWith(";") ? sql : (sql + ";");
+                // Carry over columns from the stub (e.g. from ALTER TABLE ADD)
+                for (Map.Entry<String, SqlExportIndex.ColumnDef> entry : ddl.columnsByKey.entrySet()) {
+                    if (!newDdl.columnsByKey.containsKey(entry.getKey())) {
+                        newDdl.columnsByKey.put(entry.getKey(), entry.getValue());
+                    }
+                }
+                idx.ddlsByTableKey.put(tableKey, newDdl);
+            } else {
+                // Already have a full DDL, just merge extra columns
+                for (Map.Entry<String, SqlExportIndex.ColumnDef> entry : colsByKey.entrySet()) {
+                    if (!ddl.columnsByKey.containsKey(entry.getKey())) {
+                        ddl.columnsByKey.put(entry.getKey(), entry.getValue());
+                    }
+                }
+            }
         }
     }
 
@@ -408,7 +551,10 @@ public class LookupDifferEngine {
         List<String> vals = splitTopLevelComma(valsRaw).stream().map(SqlParsers::normToken).collect(Collectors.toList());
 
         List<String> colsKey = new ArrayList<String>();
-        for (String c : cols) colsKey.add(ci ? c.toUpperCase() : c);
+        for (String c : cols) {
+            String clean = SqlParsers.cleanIdentifier(c);
+            colsKey.add(ci ? clean.toUpperCase() : clean);
+        }
 
         List<String> valsKey = new ArrayList<String>();
         for (String v : vals) valsKey.add(v);

@@ -108,6 +108,110 @@ public final class SqlParsers {
 
     public static String flattenSqlLine(String s) {
         if (s == null) return "";
-        return s.replaceAll("[\\r\\n]+", " ").replaceAll("\\s+", " ").trim();
+        String cleaned = stripComments(s);
+        return cleaned.replaceAll("[\\r\\n]+", " ").replaceAll("\\s+", " ").trim();
+    }
+
+    public static String stripComments(String sql) {
+        if (sql == null) return "";
+        StringBuilder sb = new StringBuilder();
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+        boolean inSingleLineComment = false;
+        boolean inMultiLineComment = false;
+
+        for (int i = 0; i < sql.length(); i++) {
+            char c = sql.charAt(i);
+            char next = (i + 1 < sql.length()) ? sql.charAt(i + 1) : '\0';
+
+            if (inSingleLineComment) {
+                if (c == '\n' || c == '\r') {
+                    inSingleLineComment = false;
+                    sb.append(c);
+                }
+                continue;
+            }
+            if (inMultiLineComment) {
+                if (c == '*' && next == '/') {
+                    inMultiLineComment = false;
+                    i++;
+                }
+                continue;
+            }
+
+            if (!inDoubleQuote && c == '\'') {
+                inSingleQuote = !inSingleQuote;
+            } else if (!inSingleQuote && c == '"') {
+                inDoubleQuote = !inDoubleQuote;
+            }
+
+            if (!inSingleQuote && !inDoubleQuote) {
+                if (c == '-' && next == '-') {
+                    inSingleLineComment = true;
+                    i++;
+                    continue;
+                }
+                if (c == '/' && next == '*') {
+                    inMultiLineComment = true;
+                    i++;
+                    continue;
+                }
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    public static List<String> splitStatements(String sql) {
+        List<String> out = new ArrayList<String>();
+        if (sql == null) return out;
+
+        StringBuilder cur = new StringBuilder();
+        boolean inSingle = false;
+        boolean inDouble = false;
+        boolean inSingleComment = false;
+        boolean inMultiComment = false;
+
+        for (int i = 0; i < sql.length(); i++) {
+            char c = sql.charAt(i);
+            char next = (i + 1 < sql.length()) ? sql.charAt(i + 1) : '\0';
+
+            if (inSingleComment) {
+                cur.append(c);
+                if (c == '\n' || c == '\r') inSingleComment = false;
+                continue;
+            }
+            if (inMultiComment) {
+                cur.append(c);
+                if (c == '*' && next == '/') {
+                    cur.append(next);
+                    inMultiComment = false;
+                    i++;
+                }
+                continue;
+            }
+
+            if (c == '\'' && !inDouble) inSingle = !inSingle;
+            if (c == '"' && !inSingle) inDouble = !inDouble;
+
+            if (!inSingle && !inDouble) {
+                if (c == '-' && next == '-') {
+                    inSingleComment = true;
+                } else if (c == '/' && next == '*') {
+                    inMultiComment = true;
+                } else if (c == ';') {
+                    cur.append(c);
+                    out.add(cur.toString());
+                    cur.setLength(0);
+                    continue;
+                }
+            }
+            cur.append(c);
+        }
+
+        String last = cur.toString().trim();
+        if (!last.isEmpty()) out.add(last);
+
+        return out;
     }
 }
