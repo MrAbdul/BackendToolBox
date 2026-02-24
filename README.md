@@ -37,6 +37,13 @@ A config-driven static analysis tool to detect potential cache consistency issue
 ### 5.  Hello Tool
 A lightweight demonstration module used to showcase the extensibility of the TUI framework.
 
+### 6.  Lookup Differ
+A tool for diffing SQL export folders (typically from Oracle/database exports) to generate migration patches.
+- **DDL & Data Diff**: Compares `CREATE TABLE`, `ALTER TABLE`, and `INSERT` statements across two directories.
+- **Smart Updates**: Uses Primary Key (PK) information from `CREATE UNIQUE INDEX` or `ALTER TABLE ... ADD PRIMARY KEY` to generate `UPDATE` statements for mismatched rows.
+- **Split Patch Files**: Automatically generates global patches (`schema_patch.sql`, `insert_patch.sql`, `update_patch.sql`) and per-table data patches (`{table}_insert.sql`, `{table}_update.sql`).
+- **Reporting**: Provides counts for missing tables, columns, PKs, and rows, along with a list of created tables.
+
 ---
 
 ##  Architecture & Core Components
@@ -100,6 +107,12 @@ In the TUI, select the entry named "DB Analyzer (SQL Diff)", then:
 - Optionally set package filter CSV, toggle dynamic SQL inclusion, and provide a JSON output path.
 - Press "Run SQL Diff" to execute. Results appear in the Output pane.
 
+In the TUI, select the entry named "Lookup Differ", then:
+- Fill "Source dir" (e.g., your PROD export folder).
+- Fill "Target dir" (e.g., your UAT export folder).
+- Optionally specify an "Out dir" to save the generated SQL patches.
+- Press "Run diff" to execute. Summary and details appear in the Report pane.
+
 #### **CLI Mode**
 Run a specific command directly from the command line.
 ```bash
@@ -117,6 +130,9 @@ java -jar target/BackendToolBox-1.0-SNAPSHOT.jar --toolbox.mode=cli dbanalyzer -
 
 # Example: Cache TTL Inspection
 java -jar target/BackendToolBox-1.0-SNAPSHOT.jar --toolbox.mode=cli cachettl --sourceRoot ./src/main/java --jsonOut ./cache-report.json
+
+# Example: Lookup Differ (compare two export folders and generate patches)
+java -jar target/BackendToolBox-1.0-SNAPSHOT.jar --toolbox.mode=cli lookupdiffer --sourceDir ./prod_export --targetDir ./uat_export --outDir ./patches
 ```
 
 ---
@@ -208,6 +224,29 @@ Optional:
 Exit codes:
 - `0` OK (no findings)
 - `1` Findings detected
+- `2` Invalid usage / missing args
+
+### lookupdiffer
+Diff lookup export SQL folders (DDL + PK + INSERTs) and generate schema + insert/update patches.
+
+Usage:
+```bash
+java -jar BackendToolBox.jar --toolbox.mode=cli lookupdiffer --sourceDir <path> --targetDir <path> [options]
+```
+
+Required:
+- `--sourceDir <path>`: Folder containing SOURCE exports (e.g., PROD).
+- `--targetDir <path>`: Folder containing TARGET exports (e.g., UAT).
+
+Optional:
+- `--outDir <path>`: Directory to write output files. Generates `schema_patch.sql`, `insert_patch.sql`, `update_patch.sql`, `missing_tables.sql`, `created_tables.txt`, and per-table `{table}_insert.sql` / `{table}_update.sql`.
+- `--jsonOut <path>`: Write detailed findings as JSON.
+- `--tableContains <text>`: Filter tables by name.
+- `--caseInsensitive <true|false>`: Default `true`.
+
+Exit codes:
+- `0` OK (no diffs found)
+- `1` Diffs found or parse errors
 - `2` Invalid usage / missing args
 
 JSON output (example):
@@ -318,6 +357,8 @@ The application automatically discovers new tools via Spring's component scannin
   - `JdbcDetectorEngine`, `JdbcDetectorService`, `JdbcDetectorScreen`, `JdbcDetectorToolModule`, `JdbcDetectorCliCommand`, `JdbcDetectorRequest`, `JdbcDetectorResult`, `Finding`, `DaoFilterParser` — static analysis for JDBC resource management.
 - `com.mrabdul.tools.ssl`
   - `SslCheckerService`, `SslCheckerScreen`, `SslCheckerToolModule`, `SslCheckCliCommand`, `SslCheckRequest`, `SslCheckResult`, `ProxyConfig`, `CapturingTrustManager`, `CapturingKeyManager` — SSL/TLS diagnostics with optional proxy and custom stores.
+- `com.mrabdul.tools.lookupdiffer`
+  - `LookupDifferEngine`, `LookupDifferService`, `LookupDifferScreen`, `LookupDifferToolModule`, `LookupDifferCliCommand`, `LookupDifferRequest`, `LookupDifferResult`, `SqlExportIndex`, `SqlParsers`, `DiffFinding` — diffing engine for SQL export folders.
 
 ##  Testing
 - Framework: JUnit 5 (Jupiter) via Spring Boot starter.

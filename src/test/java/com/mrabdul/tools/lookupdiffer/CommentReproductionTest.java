@@ -161,9 +161,47 @@ class CommentReproductionTest {
         Path insertPatch = outDir.resolve("insert_patch.sql");
         String content = new String(Files.readAllBytes(insertPatch), StandardCharsets.UTF_8);
         
-        // Note: Our current flattenSqlLine replaces newlines with spaces. 
-        // We should check if this is acceptable or if we need to fix it.
-        assertTrue(content.contains("Line1 Line2"), "Newline in data was replaced by space (current behavior)");
+        // We should fix this to preserve newlines in data.
+        assertTrue(content.contains("Line1\nLine2") || content.contains("Line1\r\nLine2"), "Newline in data should be preserved");
         assertTrue(content.contains("Val with -- comment-like string"), "Comment-like string was preserved");
+    }
+
+    @Test
+    void testMultilineStringWithSemicolon() throws Exception {
+        Path source = tempDir.resolve("src_semi_str");
+        Path target = tempDir.resolve("tgt_semi_str");
+        Path outDir = tempDir.resolve("out_semi_str");
+        Files.createDirectories(source);
+        Files.createDirectories(target);
+        Files.createDirectories(outDir);
+
+        String sql = "CREATE TABLE T5 (VAL VARCHAR2(100));\n" +
+                     "INSERT INTO T5 (VAL) VALUES ('Statement 1;\nStatement 2');\n";
+
+        Files.write(source.resolve("T5.sql"), sql.getBytes(StandardCharsets.UTF_8));
+
+        LookupDifferEngine engine = new LookupDifferEngine();
+        LookupDifferRequest req = new LookupDifferRequest(
+                source.toString(),
+                target.toString(),
+                true,
+                null,
+                outDir.toString(),
+                null
+        );
+
+        LookupDifferResult result = engine.run(req);
+
+        // Verify T5 missing
+        assertTrue(result.getFindings().stream().anyMatch(f -> "TABLE_MISSING".equals(f.kind) && "T5".equalsIgnoreCase(f.table)));
+
+        // Verify Row missing
+        long missingRows = result.getFindings().stream().filter(f -> "ROW_MISSING".equals(f.kind) && "T5".equalsIgnoreCase(f.table)).count();
+        assertEquals(1, missingRows, "Should detect one row even with semicolon in string");
+
+        Path insertPatch = outDir.resolve("t5_insert.sql");
+        String content = new String(Files.readAllBytes(insertPatch), StandardCharsets.UTF_8);
+        assertTrue(content.contains("Statement 1;"), "Semicolon in string should be preserved");
+        assertTrue(content.contains("Statement 2"), "Content after semicolon in string should be preserved");
     }
 }

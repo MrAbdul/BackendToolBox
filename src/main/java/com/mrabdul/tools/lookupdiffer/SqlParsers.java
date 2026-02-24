@@ -6,10 +6,14 @@ import java.util.List;
 public final class SqlParsers {
     private SqlParsers() {}
 
-    /** Normalize identifier token: trim + collapse spaces + optionally upper-case later in engine */
+    /** Normalize identifier token: trim + collapse spaces if NOT a string literal */
     public static String normToken(String s) {
         if (s == null) return "";
-        return s.trim().replaceAll("\\s+", " ");
+        String t = s.trim();
+        if (t.startsWith("'") && t.endsWith("'") && t.length() >= 2) {
+            return t;
+        }
+        return t.replaceAll("\\s+", " ");
     }
 
     /** Extracts clean table/column name, stripping schema prefixes and quotes.
@@ -107,9 +111,76 @@ public final class SqlParsers {
     }
 
     public static String flattenSqlLine(String s) {
-        if (s == null) return "";
-        String cleaned = stripComments(s);
-        return cleaned.replaceAll("[\\r\\n]+", " ").replaceAll("\\s+", " ").trim();
+        return normalizeSql(s);
+    }
+
+    /** Strips comments and collapses whitespace outside of quotes, preserving everything inside quotes. */
+    public static String normalizeSql(String sql) {
+        if (sql == null) return "";
+        StringBuilder sb = new StringBuilder();
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+        boolean inSingleLineComment = false;
+        boolean inMultiLineComment = false;
+        boolean lastWasWhitespace = false;
+
+        for (int i = 0; i < sql.length(); i++) {
+            char c = sql.charAt(i);
+            char next = (i + 1 < sql.length()) ? sql.charAt(i + 1) : '\0';
+
+            if (inSingleLineComment) {
+                if (c == '\n' || c == '\r') inSingleLineComment = false;
+                continue;
+            }
+            if (inMultiLineComment) {
+                if (c == '*' && next == '/') {
+                    inMultiLineComment = false;
+                    i++;
+                }
+                continue;
+            }
+
+            if (!inDoubleQuote && c == '\'') {
+                inSingleQuote = !inSingleQuote;
+                sb.append(c);
+                lastWasWhitespace = false;
+                continue;
+            } else if (!inSingleQuote && c == '"') {
+                inDoubleQuote = !inDoubleQuote;
+                sb.append(c);
+                lastWasWhitespace = false;
+                continue;
+            }
+
+            if (inSingleQuote || inDoubleQuote) {
+                sb.append(c);
+                lastWasWhitespace = false;
+                continue;
+            }
+
+            // Outside quotes
+            if (c == '-' && next == '-') {
+                inSingleLineComment = true;
+                i++;
+                continue;
+            }
+            if (c == '/' && next == '*') {
+                inMultiLineComment = true;
+                i++;
+                continue;
+            }
+
+            if (Character.isWhitespace(c)) {
+                if (!lastWasWhitespace) {
+                    sb.append(' ');
+                    lastWasWhitespace = true;
+                }
+            } else {
+                sb.append(c);
+                lastWasWhitespace = false;
+            }
+        }
+        return sb.toString().trim();
     }
 
     public static String stripComments(String sql) {

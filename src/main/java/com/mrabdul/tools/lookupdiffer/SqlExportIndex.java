@@ -13,6 +13,9 @@ public class SqlExportIndex {
     // tableKey -> list of primary key columns
     public final Map<String, List<String>> pksByTableKey = new LinkedHashMap<String, List<String>>();
 
+    // tableKey -> PK DDL (ALTER TABLE ... ADD PRIMARY KEY ... or CREATE UNIQUE INDEX ...)
+    public final Map<String, String> pkDdlsByTableKey = new LinkedHashMap<String, String>();
+
     public static class TableDdl {
         public final String tableName;
         public final String file;

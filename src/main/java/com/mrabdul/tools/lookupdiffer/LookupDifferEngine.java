@@ -82,6 +82,20 @@ public class LookupDifferEngine {
             }
         }
 
+        // 2.1) PKs missing
+        for (String tableKey : commonTables) {
+            if (sourceIndex.pksByTableKey.containsKey(tableKey) && !targetIndex.pksByTableKey.containsKey(tableKey)) {
+                String pkSql = sourceIndex.pkDdlsByTableKey.get(tableKey);
+                if (pkSql != null) {
+                    alterStatements.add(pkSql);
+                    DiffFinding f = new DiffFinding("PK_MISSING", tableKey, "", -1,
+                            "Primary Key/Unique Index exists in SOURCE but not in TARGET.");
+                    f.ddl = pkSql;
+                    findings.add(f);
+                }
+            }
+        }
+
         // 3) missing data rows & updates
         List<String> insertStatements = new ArrayList<String>();
         List<String> updateStatements = new ArrayList<String>();
@@ -151,19 +165,53 @@ public class LookupDifferEngine {
         long missingColumns = findings.stream().filter(x -> "COLUMN_MISSING".equals(x.kind)).count();
         long missingRows = findings.stream().filter(x -> "ROW_MISSING".equals(x.kind)).count();
         long mismatchedRows = findings.stream().filter(x -> "ROW_MISMATCH".equals(x.kind)).count();
+        long missingPks = findings.stream().filter(x -> "PK_MISSING".equals(x.kind)).count();
         long warnings = findings.stream().filter(x -> "WARN_NO_PK".equals(x.kind)).count();
         long parseErrors = findings.stream().filter(x -> "PARSE_ERROR".equals(x.kind)).count();
 
-        String report = buildReport(findings, missingTables, missingColumns, missingRows, mismatchedRows, warnings, parseErrors);
+        String report = buildReport(findings, missingTables, missingColumns, missingPks, missingRows, mismatchedRows, warnings, parseErrors);
 
         if (req.getOutDir() != null && !req.getOutDir().trim().isEmpty()) {
             Path out = Paths.get(req.getOutDir().trim()).toAbsolutePath().normalize();
             Files.createDirectories(out);
 
+            Set<String> missingTableSet = findings.stream()
+                    .filter(f -> "TABLE_MISSING".equals(f.kind))
+                    .map(f -> f.table.toUpperCase())
+                    .collect(Collectors.toSet());
+
             writeSql(out.resolve("missing_tables.sql"), buildMissingTablesSql(findings));
             writeSql(out.resolve("schema_patch.sql"), buildSchemaPatchSql(alterStatements));
-            writeSql(out.resolve("insert_patch.sql"), buildInsertPatchSql(findings));
+            writeSql(out.resolve("insert_patch.sql"), buildInsertPatchSql(findings, missingTableSet));
             writeSql(out.resolve("update_patch.sql"), buildUpdatePatchSql(findings));
+
+            // Split files per table for inserts
+            Map<String, List<DiffFinding>> insertsByTable = findings.stream()
+                    .filter(f -> "ROW_MISSING".equals(f.kind) && f.insertSql != null)
+                    .collect(Collectors.groupingBy(f -> f.table));
+            for (Map.Entry<String, List<DiffFinding>> entry : insertsByTable.entrySet()) {
+                String tableName = entry.getKey().toLowerCase();
+                writeSql(out.resolve(tableName + "_insert.sql"), buildInsertPatchSql(entry.getValue(), missingTableSet));
+            }
+
+            // Split files per table for updates
+            Map<String, List<DiffFinding>> updatesByTable = findings.stream()
+                    .filter(f -> "ROW_MISMATCH".equals(f.kind) && f.insertSql != null)
+                    .collect(Collectors.groupingBy(f -> f.table));
+            for (Map.Entry<String, List<DiffFinding>> entry : updatesByTable.entrySet()) {
+                String tableName = entry.getKey().toLowerCase();
+                writeSql(out.resolve(tableName + "_update.sql"), buildUpdatePatchSql(entry.getValue()));
+            }
+
+            // Created tables list
+            List<String> createdTables = findings.stream()
+                    .filter(f -> "TABLE_MISSING".equals(f.kind))
+                    .map(f -> f.table)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!createdTables.isEmpty()) {
+                writeSql(out.resolve("created_tables.txt"), String.join("\n", createdTables) + "\n");
+            }
         }
 
         if (req.getJsonOut() != null && !req.getJsonOut().trim().isEmpty()) {
@@ -173,8 +221,8 @@ public class LookupDifferEngine {
             om.writeValue(jsonOut.toFile(), findings);
         }
 
-        // Now correctly passes all 6 longs!
-        return new LookupDifferResult(findings, missingTables, missingColumns, missingRows, mismatchedRows, warnings, parseErrors, report);
+        // Now correctly passes all 7 longs!
+        return new LookupDifferResult(findings, missingTables, missingColumns, missingRows, mismatchedRows, missingPks, warnings, parseErrors, report);
     }
 
     private String colKeyFile(SqlExportIndex.TableDdl ddl, SqlExportIndex.ColumnDef col) {
@@ -209,14 +257,9 @@ public class LookupDifferEngine {
         return sb.toString();
     }
 
-    private String buildInsertPatchSql(List<DiffFinding> findings) {
+    private String buildInsertPatchSql(List<DiffFinding> findings, Set<String> missingTables) {
         StringBuilder sb = new StringBuilder();
         sb.append("-- Data patch: insert missing rows (SOURCE -> TARGET)\n");
-
-        Set<String> missingTables = new HashSet<String>();
-        for (DiffFinding f : findings) {
-            if ("TABLE_MISSING".equals(f.kind)) missingTables.add(f.table.toUpperCase());
-        }
 
         String lastTable = null;
         for (DiffFinding f : findings) {
@@ -224,7 +267,7 @@ public class LookupDifferEngine {
                 if (lastTable == null || !lastTable.equals(f.table)) {
                     lastTable = f.table;
                     sb.append("\n-- Table: ").append(f.table);
-                    if (missingTables.contains(f.table.toUpperCase())) {
+                    if (missingTables != null && missingTables.contains(f.table.toUpperCase())) {
                         sb.append(" (MISSING IN TARGET)");
                     }
                     sb.append("\n");
@@ -285,6 +328,7 @@ public class LookupDifferEngine {
     private String buildReport(List<DiffFinding> findings,
                                long missingTables,
                                long missingColumns,
+                               long missingPks,
                                long missingRows,
                                long mismatchedRows,
                                long warnings,
@@ -293,6 +337,7 @@ public class LookupDifferEngine {
         sb.append("=== lookupdiffer ===\n");
         sb.append("Missing tables: ").append(missingTables).append("\n");
         sb.append("Missing columns: ").append(missingColumns).append("\n");
+        sb.append("Missing PKs/Indexes: ").append(missingPks).append("\n");
         sb.append("Missing rows: ").append(missingRows).append("\n");
         sb.append("Mismatched rows (Updates): ").append(mismatchedRows).append("\n");
         sb.append("Warnings (No PK found): ").append(warnings).append("\n");
@@ -311,6 +356,15 @@ public class LookupDifferEngine {
             sb.append("\nColumns missing in target (top 50):\n");
             for (DiffFinding f : topCols) {
                 sb.append("- ").append(f.table).append(" | ").append(f.message).append("\n");
+                if (f.ddl != null) sb.append("  ").append(f.ddl).append("\n");
+            }
+        }
+
+        List<DiffFinding> topPks = findings.stream().filter(f -> "PK_MISSING".equals(f.kind)).limit(50).collect(Collectors.toList());
+        if (!topPks.isEmpty()) {
+            sb.append("\nPKs/Indexes missing in target:\n");
+            for (DiffFinding f : topPks) {
+                sb.append("- ").append(f.table).append("\n");
                 if (f.ddl != null) sb.append("  ").append(f.ddl).append("\n");
             }
         }
@@ -348,48 +402,43 @@ public class LookupDifferEngine {
         String tableFilter = req.getTableNameContains();
         boolean ci = req.isCaseInsensitive();
 
-        StringBuilder stmt = new StringBuilder();
-        int stmtStartLine = 1;
-
-        for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i);
-            if (line == null) continue;
-
-            String trimmed = line.trim();
-            if (trimmed.isEmpty()) continue;
-
-            if (stmt.length() == 0) stmtStartLine = i + 1;
-            stmt.append(line).append("\n");
-
-            String lineStripped = stripComments(line).trim();
-            if (lineStripped.endsWith(";")) {
-                processStmt(stmt.toString(), filePath, stmtStartLine, idx, ci, tableFilter);
-                stmt.setLength(0);
-            }
-        }
-        if (stmt.length() > 0) {
-            processStmt(stmt.toString(), filePath, stmtStartLine, idx, ci, tableFilter);
-        }
+        String fullSql = String.join("\n", lines);
+        processStmt(fullSql, filePath, 1, idx, ci, tableFilter);
     }
 
     private void processStmt(String rawSql, String filePath, int stmtStartLine, SqlExportIndex idx, boolean ci, String tableFilter) {
         List<String> statements = splitStatements(rawSql);
+        int currentLine = stmtStartLine;
         for (String raw : statements) {
             String sql = flattenSqlLine(raw);
-            if (sql.isEmpty()) continue;
+            if (sql.isEmpty()) {
+                currentLine += countNewlines(raw);
+                continue;
+            }
 
             if (startsWithIgnoreCase(sql, "CREATE TABLE")) {
-                parseCreateTable(sql, filePath, stmtStartLine, idx, ci, tableFilter);
+                parseCreateTable(sql, filePath, currentLine, idx, ci, tableFilter);
             } else if (startsWithIgnoreCase(sql, "INSERT INTO")) {
-                parseInsert(sql, filePath, stmtStartLine, idx, ci, tableFilter);
+                parseInsert(sql, filePath, currentLine, idx, ci, tableFilter);
             } else if (startsWithIgnoreCase(sql, "CREATE UNIQUE INDEX")) {
-                parseCreateIndex(sql, filePath, stmtStartLine, idx, ci, tableFilter);
+                parseCreateIndex(sql, filePath, currentLine, idx, ci, tableFilter);
             } else if (startsWithIgnoreCase(sql, "ALTER TABLE") && indexOfIgnoreCase(sql, "PRIMARY KEY") > 0) {
-                parseAlterTablePk(sql, filePath, stmtStartLine, idx, ci, tableFilter);
+                parseAlterTablePk(sql, filePath, currentLine, idx, ci, tableFilter);
             } else if (startsWithIgnoreCase(sql, "ALTER TABLE") && indexOfIgnoreCase(sql, " ADD ") > 0) {
-                parseAlterTableAdd(sql, filePath, stmtStartLine, idx, ci, tableFilter);
+                parseAlterTableAdd(sql, filePath, currentLine, idx, ci, tableFilter);
             }
+            
+            currentLine += countNewlines(raw);
         }
+    }
+
+    private int countNewlines(String s) {
+        if (s == null) return 0;
+        int count = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == '\n') count++;
+        }
+        return count;
     }
 
     private void parseAlterTableAdd(String sql, String file, int line, SqlExportIndex idx, boolean ci, String tableFilter) {
@@ -602,6 +651,7 @@ public class LookupDifferEngine {
         String tableKey = ci ? tableName.toUpperCase() : tableName;
         if (!pkCols.isEmpty()) {
             idx.pksByTableKey.put(tableKey, pkCols);
+            idx.pkDdlsByTableKey.put(tableKey, sql.endsWith(";") ? sql : (sql + ";"));
         }
     }
 
@@ -637,6 +687,7 @@ public class LookupDifferEngine {
         String tableKey = ci ? tableName.toUpperCase() : tableName;
         if (!pkCols.isEmpty()) {
             idx.pksByTableKey.put(tableKey, pkCols);
+            idx.pkDdlsByTableKey.put(tableKey, sql.endsWith(";") ? sql : (sql + ";"));
         }
     }
 
